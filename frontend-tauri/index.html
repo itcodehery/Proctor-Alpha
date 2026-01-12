@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proctor</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <div id="app">
+    <nav class="top-nav">
+      <div class="logo-section">
+        <div class="logo-box">PS</div>
+        <span class="logo-text">Proctor</span>
+        <div class="status-indicator active-only">
+          <span class="dot"></span>
+          <span class="status-text">Active</span>
+        </div>
+        <div class="status-indicator paused-only" style="display: none;">
+          <span class="dot paused"></span>
+          <span class="status-text paused">Paused</span>
+        </div>
+      </div>
+      <button id="end-session-btn" class="end-session-btn">
+        <span class="btn-icon"></span>
+        End Session
+      </button>
+      <div class="session-info">
+        <span class="session-label active-only">Session Time</span>
+        <span class="session-label paused-only" style="display: none;">Session Time Paused</span>
+        <div class="session-timer">02:24</div>
+      </div>
+    </nav>
+
+    <div id="main-wrapper">
+      <main class="main-content">
+        <div class="left-column">
+          <div class="window code-editor">
+            <div class="window-header">
+              <span class="window-title">Code Editor | cia2_exam.c*</span>
+              <div class="window-controls">
+                <span class="minimize"></span>
+                <span class="maximize"></span>
+              </div>
+            </div>
+            <div id="terminal-container" class="window-content"></div>
+          </div>
+          <div class="window terminal">
+            <div class="window-header">
+              <span class="window-title">Terminal</span>
+              <div class="window-controls">
+                <span class="minimize"></span>
+                <span class="maximize"></span>
+              </div>
+            </div>
+            <div id="shell-container" class="window-content"></div>
+          </div>
+        </div>
+        <div class="right-column">
+          <div class="window logger">
+            <div class="window-header">
+              <span class="window-title">Logger</span>
+              <div class="window-controls">
+                <span class="minimize"></span>
+                <span class="maximize"></span>
+              </div>
+            </div>
+            <div class="window-content logger-content">
+              <div class="log-entries">
+                <div class="log-entry">
+                  <span class="log-time">00:20</span>
+                  <span class="log-task">ran 'ls' command on the Terminal</span>
+                </div>
+                <div class="log-entry">
+                  <span class="log-time">00:26</span>
+                  <span class="log-task">ran 'mkdir' command on the Terminal</span>
+                </div>
+                <div class="log-entry">
+                  <span class="log-time">00:27</span>
+                  <span class="log-task">Created new folder "cia2_lab"</span>
+                </div>
+                <div class="log-entry">
+                  <span class="log-time">00:31</span>
+                  <span class="log-task">ran 'touch' command on the Terminal</span>
+                </div>
+                <!-- More entries can be added here -->
+              </div>
+              <button class="export-log-btn">Export Log</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="dialog-overlay" class="dialog-overlay" style="display: none;">
+      <div class="modal">
+        <div class="modal-close-icon">✕</div>
+        <h2 class="modal-title">End Session?</h2>
+        <p class="modal-text">Enter Admin Key to exit current session. This will halt progress and save all workspace
+          files.</p>
+        <div class="admin-input-container">
+          <input type="password" class="admin-input" placeholder="Enter the Admin Key" />
+          <span class="input-dots">•••</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
