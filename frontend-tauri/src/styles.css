@@ -159,11 +159,9 @@ body {
 
 .main-content {
   flex: 1;
-  display: grid;
-  grid-template-columns: 3fr 1fr;
+  display: flex;
   padding: 16px;
-  gap: 20px;
-  height: 100%;
+  overflow: hidden;
   transition: filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -175,7 +173,6 @@ body {
 .left-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   height: 100%;
 }
 
@@ -194,12 +191,10 @@ body {
 }
 
 .window.code-editor {
-  flex: 1.8;
   background-color: var(--window-bg-dark);
 }
 
 .window.terminal {
-  flex: 1;
   background-color: var(--window-bg-dark);
 }
 
@@ -469,4 +464,54 @@ body {
   color: #bbb;
   font-size: 20px;
   letter-spacing: 2px;
+}
+
+/* Split.js Gutters */
+.gutter {
+  background-color: rgba(255, 255, 255, 0.03);
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.gutter:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+  width: 8px !important;
+  margin: 0 4px;
+}
+
+.gutter.gutter-vertical {
+  cursor: row-resize;
+  height: 8px !important;
+  margin: 4px 0;
+}
+
+/* Handle dots */
+.gutter::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.gutter-horizontal::after {
+  width: 2px;
+  height: 24px;
+}
+
+.gutter-vertical::after {
+  width: 24px;
+  height: 2px;
+}
+
+.pane {
+  overflow: hidden;
 }

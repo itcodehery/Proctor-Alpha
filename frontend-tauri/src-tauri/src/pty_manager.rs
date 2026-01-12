@@ -10,7 +10,7 @@ pub struct PtyInstance {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
 }
 
-pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str) -> PtyInstance {
+pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str, args: &[&str]) -> PtyInstance {
     let pty_system = NativePtySystem::default();
 
     let pair = pty_system
@@ -22,7 +22,13 @@ pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str) -> PtyIns
         })
         .expect("failed to open pty");
 
-    let cmd = CommandBuilder::new(command);
+    let mut cmd = CommandBuilder::new(command);
+    cmd.args(args);
+    
+    // Set TERM environment variable for coloring and proper behavior
+    cmd.env("TERM", "xterm-256color");
+    cmd.env("COLORTERM", "truecolor");
+
     let mut child = pair.slave.spawn_command(cmd).expect("failed to spawn command");
 
     // Close slave to avoid keeping handles open
@@ -39,13 +45,12 @@ pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str) -> PtyIns
     // Read thread
     thread::spawn(move || {
         let mut reader = reader;
-        let mut buffer = [0u8; 1024];
+        let mut buffer = [0u8; 4096]; // Larger buffer
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(n) => {
                     let data = &buffer[..n];
-                    // Emit with pty_id so frontend knows which terminal this belongs to
                     let payload = serde_json::json!({
                         "pty_id": pty_id_clone,
                         "data": data

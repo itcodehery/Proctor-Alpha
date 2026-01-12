@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import Split from 'split.js';
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -16,6 +17,7 @@ function createTerminal(containerId, ptyId) {
         fontSize: 14,
         fontFamily: 'JetBrains Mono',
         cursorBlink: true,
+        altClickMovesCursor: false, // Prevent accidental exits in some apps
     });
 
     const fitAddon = new FitAddon();
@@ -64,11 +66,34 @@ window.addEventListener('resize', () => {
 // Focus editor by default
 editor.term.focus();
 
+// --- Split.js Initialization ---
+Split(['#col-left', '#col-right'], {
+    sizes: [75, 25],
+    minSize: 200,
+    gutterSize: 12,
+    onDrag: () => {
+        editor.fitAddon.fit();
+        shell.fitAddon.fit();
+    }
+});
+
+Split(['#pane-editor', '#pane-terminal'], {
+    direction: 'vertical',
+    sizes: [65, 35],
+    minSize: 100,
+    gutterSize: 12,
+    onDrag: () => {
+        editor.fitAddon.fit();
+        shell.fitAddon.fit();
+    }
+});
+
 // --- Dialog and State Management ---
 const endSessionBtn = document.getElementById('end-session-btn');
 const dialogOverlay = document.getElementById('dialog-overlay');
 const closeIcon = document.querySelector('.modal-close-icon');
 const appContainer = document.getElementById('app');
+const adminInput = document.querySelector('.admin-input');
 
 const activeIndicators = document.querySelectorAll('.active-only');
 const pausedIndicators = document.querySelectorAll('.paused-only');
@@ -79,11 +104,13 @@ function setSessionState(isPaused) {
         dialogOverlay.style.display = 'flex';
         activeIndicators.forEach(el => el.style.display = 'none');
         pausedIndicators.forEach(el => el.style.display = 'flex');
+        adminInput.focus();
     } else {
         appContainer.classList.remove('paused-mode');
         dialogOverlay.style.display = 'none';
         activeIndicators.forEach(el => el.style.display = 'flex');
         pausedIndicators.forEach(el => el.style.display = 'none');
+        adminInput.value = '';
     }
 }
 
@@ -92,4 +119,17 @@ closeIcon.addEventListener('click', () => setSessionState(false));
 
 dialogOverlay.addEventListener('click', (e) => {
     if (e.target === dialogOverlay) setSessionState(false);
+});
+
+// Handle Admin Key submission
+adminInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const key = adminInput.value;
+        invoke('confirm_exit', { adminKey: key });
+    }
+});
+
+// Listen for close attempts from Rust
+listen('attempted-close', () => {
+    setSessionState(true);
 });
