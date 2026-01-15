@@ -2,6 +2,7 @@ use std::{
     io::{Read, Write},
     sync::{Arc, Mutex},
     thread,
+    path::PathBuf,
 };
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use tauri::{AppHandle, Emitter};
@@ -10,7 +11,7 @@ pub struct PtyInstance {
     pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
 }
 
-pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str, args: &[&str]) -> PtyInstance {
+pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str, args: &[&str], cwd: PathBuf) -> PtyInstance {
     let pty_system = NativePtySystem::default();
 
     let pair = pty_system
@@ -24,6 +25,7 @@ pub fn spawn_pty(app_handle: AppHandle, pty_id: String, command: &str, args: &[&
 
     let mut cmd = CommandBuilder::new(command);
     cmd.args(args);
+    cmd.cwd(cwd);
     
     // Set TERM environment variable for coloring and proper behavior
     cmd.env("TERM", "xterm-256color");

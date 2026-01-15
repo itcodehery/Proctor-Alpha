@@ -12,9 +12,10 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "frontend-tauri",
-        "width": 800,
-        "height": 600
+        "title": "Proctor",
+        "decorations": false,
+        "width": 1000,
+        "height": 800
       }
     ],
     "security": {

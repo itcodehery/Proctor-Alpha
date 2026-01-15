@@ -6,106 +6,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Proctor</title>
   <link rel="stylesheet" href="/src/styles.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
 </head>
 
 <body>
   <div id="app">
-    <nav class="top-nav">
-      <div class="logo-section">
+    <nav class="top-nav" data-tauri-drag-region role="navigation" aria-label="Main Navigation">
+      <div class="logo-section" data-tauri-drag-region>
         <div class="logo-box">PS</div>
         <span class="logo-text">Proctor</span>
-        <div class="status-indicator active-only">
+        <div class="status-indicator active-only" role="status">
           <span class="dot"></span>
-          <span class="status-text">Active</span>
+          <span class="status-text">Live Session</span>
         </div>
-        <div class="status-indicator paused-only" style="display: none;">
-          <span class="dot paused"></span>
-          <span class="status-text paused">Paused</span>
+        <div class="status-indicator paused-only" style="display: none;" role="status">
+          <span class="dot"></span>
+          <span class="status-text">Session Paused</span>
         </div>
       </div>
-      <button id="end-session-btn" class="end-session-btn">
-        <span class="btn-icon"></span>
-        End Session
-      </button>
+
       <div class="session-info">
-        <span class="session-label active-only">Session Time</span>
-        <span class="session-label paused-only" style="display: none;">Session Time Paused</span>
-        <div class="session-timer">02:24</div>
+        <span class="session-label">Duration</span>
+        <div class="session-timer" aria-live="polite">00:00</div>
+        <button id="end-session-btn" class="end-session-btn" aria-haspopup="dialog">
+          End Session
+        </button>
       </div>
     </nav>
 
     <div id="main-wrapper">
       <main id="split-horizontal" class="main-content">
         <div id="col-left" class="left-column">
-          <div id="pane-editor" class="window code-editor">
+          <section id="pane-editor" class="window code-editor" aria-label="Code Editor">
             <div class="window-header">
-              <span class="window-title">Code Editor | cia2_exam.c*</span>
-              <div class="window-controls">
-                <span class="minimize"></span>
-                <span class="maximize"></span>
+              <span class="window-title">Source Editor</span>
+              <div class="shortcut-info" aria-hidden="true">Alt+Shift+E</div>
+            </div>
+            <div class="editor-layout">
+              <aside class="file-explorer" aria-label="File Explorer">
+                <div class="explorer-header">
+                  <span>Files</span>
+                  <div class="explorer-actions">
+                    <button id="refresh-files-btn" class="icon-btn" title="Refresh">↻</button>
+                    <button id="new-file-btn" class="icon-btn" title="New File">+</button>
+                  </div>
+                </div>
+                <div id="file-list" class="file-list">
+                  <!-- Files will be listed here -->
+                </div>
+              </aside>
+              <div class="editor-main">
+                <div id="tab-bar" class="tab-bar">
+                  <!-- Tabs will be added here -->
+                </div>
+                <div id="monaco-container" class="window-content monaco-instance"></div>
               </div>
             </div>
-            <div id="terminal-container" class="window-content"></div>
-          </div>
-          <div id="pane-terminal" class="window terminal">
+          </section>
+          
+          <section id="pane-terminal" class="window terminal" aria-label="System Terminal">
             <div class="window-header">
-              <span class="window-title">Terminal</span>
-              <div class="window-controls">
-                <span class="minimize"></span>
-                <span class="maximize"></span>
-              </div>
+              <span class="window-title">Terminal Shell</span>
+              <div class="shortcut-info" aria-hidden="true">Alt+Shift+T</div>
             </div>
             <div id="shell-container" class="window-content"></div>
-          </div>
+          </section>
         </div>
+
         <div id="col-right" class="right-column">
-          <div class="window logger">
+          <section class="window logger" aria-label="Activity Log">
             <div class="window-header">
-              <span class="window-title">Logger</span>
-              <div class="window-controls">
-                <span class="minimize"></span>
-                <span class="maximize"></span>
-              </div>
+              <span class="window-title">Activity Monitor</span>
+              <div class="shortcut-info" aria-hidden="true">Alt+Shift+S</div>
             </div>
             <div class="window-content logger-content">
-              <div class="log-entries">
-                <div class="log-entry">
-                  <span class="log-time">00:20</span>
-                  <span class="log-task">ran 'ls' command on the Terminal</span>
-                </div>
-                <div class="log-entry">
-                  <span class="log-time">00:26</span>
-                  <span class="log-task">ran 'mkdir' command on the Terminal</span>
-                </div>
-                <div class="log-entry">
-                  <span class="log-time">00:27</span>
-                  <span class="log-task">Created new folder "cia2_lab"</span>
-                </div>
-                <div class="log-entry">
-                  <span class="log-time">00:31</span>
-                  <span class="log-task">ran 'touch' command on the Terminal</span>
-                </div>
-                <!-- More entries can be added here -->
+              <div class="log-entries" id="log-entries">
+                <!-- Log entries will be added here dynamically -->
               </div>
-              <button class="export-log-btn">Export Log</button>
+              <button class="export-log-btn">Export Session Log</button>
             </div>
-          </div>
+          </section>
         </div>
       </main>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div id="dialog-overlay" class="dialog-overlay" style="display: none;">
+    <!-- Enhanced Confirmation Dialog -->
+    <div id="dialog-overlay" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">
-        <div class="modal-close-icon">✕</div>
-        <h2 class="modal-title">End Session?</h2>
-        <p class="modal-text">Enter Admin Key to exit current session. This will halt progress and save all workspace
-          files.</p>
+        <div class="modal-close-icon" role="button" aria-label="Close dialog">✕</div>
+        <div class="modal-icon">!</div>
+        <h2 id="modal-title" class="modal-title">End Session?</h2>
+        <p class="modal-text">Enter the Admin Key to finalize and export this session. All workspace files will be saved.</p>
+        
         <div class="admin-input-container">
-          <input type="password" class="admin-input" placeholder="Enter the Admin Key" />
-          <span class="input-dots">•••</span>
+          <input type="password" class="admin-input" id="admin-input" placeholder="Enter Admin Key" aria-label="Admin Key" />
         </div>
       </div>
     </div>
