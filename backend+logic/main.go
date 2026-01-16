@@ -8,21 +8,13 @@ import (
 	"strings"
 )
 
-// Logic function to reverse a string (legacy)
-func Reverse(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
-}
 
 type ScanResult struct {
 	ForbiddenFound bool     `json:"forbidden_found"`
 	Processes      []string `json:"processes"`
 }
 
-var forbiddenApps = []string{"firefox", "chrome", "discord", "slack", "spotify"}
+var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify"}
 
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
