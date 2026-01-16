@@ -449,6 +449,16 @@ body {
   color: var(--accent-primary);
 }
 
+.log-entry[data-type="alert"] {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.log-entry[data-type="alert"] .log-type-tag {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--accent-danger);
+}
+
 .log-task {
   font-size: 13px;
   color: var(--text-secondary);

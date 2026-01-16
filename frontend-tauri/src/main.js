@@ -325,6 +325,26 @@ function startTimer() {
 
 startTimer();
 
+// --- Process Shield (Go Backend Integration) ---
+async function pollProcessShield() {
+    try {
+        const response = await fetch('http://localhost:8080/scan');
+        if (!response.ok) return; 
+        const data = await response.json();
+        
+        if (data.forbidden_found) {
+            const apps = data.processes.join(', ');
+            // Check if we just logged this to avoid spamming? 
+            // For now, simple logging.
+            addLogEntry('alert', `Process Shield: Detected ${apps}`);
+        }
+    } catch (e) {
+        // Backend likely offline
+    }
+}
+
+setInterval(pollProcessShield, 5000);
+
 // --- Dialog Management ---
 const endSessionBtn = document.getElementById('end-session-btn');
 const dialogOverlay = document.getElementById('dialog-overlay');
