@@ -8,17 +8,16 @@ import (
 	"strings"
 )
 
-
 type ScanResult struct {
 	ForbiddenFound bool     `json:"forbidden_found"`
 	Processes      []string `json:"processes"`
 }
 
-var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify"}
+var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify", "zen"}
 
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	(*w).Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT")
 	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
 
@@ -61,6 +60,10 @@ func main() {
 	fmt.Println("Starting Proctor Process Shield on :8080...")
 
 	http.HandleFunc("/scan", checkProcessesHandler)
+	http.HandleFunc("/create-room", CreateRoomHandler)
+	http.HandleFunc("/join-room", JoinRoomHandler)
+	http.HandleFunc("/admin/update-status", AdminUpdateUserHandler)
+	http.HandleFunc("/get-room", GetRoomHandler)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		enableCors(&w)
@@ -72,4 +75,3 @@ func main() {
 		fmt.Println("Error starting server:", err)
 	}
 }
-
