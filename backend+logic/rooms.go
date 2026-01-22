@@ -39,6 +39,8 @@ type Room struct {
 	ActiveStatus  StatusEnum        `json:"active_status"`
 	AdminKey      string            `json:"admin_key"` // Changed to string for better security
 	TimeAllocated time.Duration     `json:"time_allocated"`
+	StartTime     time.Time         `json:"start_time"`
+	EndTime       time.Time         `json:"end_time"`
 	Students      []UserSession     `json:"students"`
 }
 
@@ -64,6 +66,61 @@ func generateID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+// StartExamHandler allows the admin to start the exam
+func StartExamHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID   string `json:"room_id"`
+		AdminKey string `json:"admin_key"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	if room.AdminKey != req.AdminKey {
+		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
+		return
+	}
+
+	if room.ActiveStatus != Waiting {
+		http.Error(w, "Exam can only be started from Waiting state", http.StatusBadRequest)
+		return
+	}
+
+	room.ActiveStatus = Active
+	room.StartTime = time.Now()
+	// If TimeAllocated is 0, assume infinite or manual stop? 
+	// Let's just calculate EndTime if TimeAllocated > 0
+	if room.TimeAllocated > 0 {
+		room.EndTime = room.StartTime.Add(room.TimeAllocated)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":    "Exam started successfully",
+		"start_time": room.StartTime,
+		"end_time":   room.EndTime,
+	})
 }
 
 // CreateRoomHandler handles the creation of a new exam room

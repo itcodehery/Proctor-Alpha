@@ -66,6 +66,20 @@ func TestRoomFlow(t *testing.T) {
 		t.Errorf("AdminUpdateUser handler returned wrong status code: got %v want %v. Body: %s", status, http.StatusOK, rr.Body.String())
 	}
 
+	// 3.5. Start Exam
+	startBody := []byte(`{
+		"room_id": "` + roomID + `",
+		"admin_key": "secret123"
+	}`)
+	req, _ = http.NewRequest("POST", "/start-exam", bytes.NewBuffer(startBody))
+	rr = httptest.NewRecorder()
+	handler = http.HandlerFunc(StartExamHandler)
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("StartExam handler returned wrong status code: got %v want %v. Body: %s", status, http.StatusOK, rr.Body.String())
+	}
+
 	// 4. Verify Status (Get Room)
 	req, _ = http.NewRequest("GET", "/get-room?room_id="+roomID, nil)
 	rr = httptest.NewRecorder()

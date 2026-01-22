@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -14,6 +15,22 @@ type ScanResult struct {
 }
 
 var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify", "zen"}
+
+func GetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
 
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
@@ -57,11 +74,16 @@ func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Starting Proctor Process Shield on :8080...")
+	ip := GetLocalIP()
+	fmt.Printf("Starting Proctor Process Shield on :8080...\n")
+	if ip != "" {
+		fmt.Printf("Admin: Share this IP with students: %s\n", ip)
+	}
 
 	http.HandleFunc("/scan", checkProcessesHandler)
 	http.HandleFunc("/create-room", CreateRoomHandler)
 	http.HandleFunc("/join-room", JoinRoomHandler)
+	http.HandleFunc("/start-exam", StartExamHandler)
 	http.HandleFunc("/admin/update-status", AdminUpdateUserHandler)
 	http.HandleFunc("/get-room", GetRoomHandler)
 
