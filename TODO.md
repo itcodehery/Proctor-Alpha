@@ -9,5 +9,8 @@
 - Add a screen to let the admin create a room
 - Handle all the Endpoints of the Backend in the Frontend
 
+## Backend
+- Whitelist App Categories instead of creating a Blacklist
+
 ## Backlog
 - Eye Scanner (Just a Gimmick)
