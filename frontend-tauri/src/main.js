@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import Split from 'split.js';
 
 import "@xterm/xterm/css/xterm.css";
@@ -72,7 +73,7 @@ async function refreshFileList() {
         const files = await invoke('list_files');
         const container = document.getElementById('file-list');
         container.innerHTML = '';
-        
+
         files.forEach(file => {
             const item = document.createElement('div');
             item.className = `file-item ${file === activeFileName ? 'active' : ''}`;
@@ -93,7 +94,7 @@ async function openFile(name) {
             const content = await invoke('read_file', { name });
             const extension = name.split('.').pop();
             let language = 'plaintext';
-            
+
             // Basic language detection
             const langMap = {
                 'js': 'javascript', 'ts': 'typescript', 'py': 'python',
@@ -114,7 +115,7 @@ async function openFile(name) {
     activeFileName = name;
     const fileData = openFiles.get(name);
     monacoEditor.setModel(fileData.model);
-    
+
     // Update UI
     document.querySelectorAll('.file-item').forEach(el => {
         el.classList.toggle('active', el.innerText.includes(name));
@@ -135,13 +136,13 @@ function addTab(name) {
         <span>${name}</span>
         <span class="tab-close">✕</span>
     `;
-    
+
     tab.onclick = () => openFile(name);
     tab.querySelector('.tab-close').onclick = (e) => {
         e.stopPropagation();
         closeFile(name);
     };
-    
+
     tabBar.appendChild(tab);
 }
 
@@ -150,7 +151,7 @@ function closeFile(name) {
         const fileData = openFiles.get(name);
         fileData.model.dispose();
         openFiles.delete(name);
-        
+
         const tab = document.querySelector(`.tab[data-name="${name}"]`);
         if (tab) tab.remove();
 
@@ -168,17 +169,50 @@ function closeFile(name) {
 
 document.getElementById('refresh-files-btn').onclick = () => refreshFileList();
 
-document.getElementById('new-file-btn').onclick = async () => {
-    const fileName = prompt('Enter file name:');
-    if (fileName) {
-        try {
-            await invoke('create_file', { name: fileName });
-            await refreshFileList();
-            openFile(fileName);
-        } catch (e) {
-            alert(e);
-        }
+// --- New File Modal Logic ---
+const newFileDialog = document.getElementById('new-file-dialog');
+const newFileInput = document.getElementById('new-file-input');
+const createFileConfirmBtn = document.getElementById('create-file-confirm-btn');
+const newFileCloseIcon = document.getElementById('new-file-close-icon');
+
+function toggleNewFileModal(show) {
+    newFileDialog.style.display = show ? 'flex' : 'none';
+    if (show) {
+        newFileInput.value = '';
+        newFileInput.focus();
     }
+}
+
+document.getElementById('new-file-btn').onclick = () => toggleNewFileModal(true);
+newFileCloseIcon.onload = () => { }; // Safety
+newFileCloseIcon.onclick = () => toggleNewFileModal(false);
+
+// Close on background click
+newFileDialog.onclick = (e) => {
+    if (e.target === newFileDialog) toggleNewFileModal(false);
+};
+
+async function handleCreateFile() {
+    const fileName = newFileInput.value.trim();
+    if (!fileName) {
+        alert("Please enter a file name");
+        return;
+    }
+
+    try {
+        await invoke('create_file', { name: fileName });
+        await refreshFileList();
+        openFile(fileName);
+        toggleNewFileModal(false);
+    } catch (e) {
+        alert("Error creating file: " + e);
+    }
+}
+
+createFileConfirmBtn.onclick = handleCreateFile;
+newFileInput.onkeydown = (e) => {
+    if (e.key === 'Enter') handleCreateFile();
+    if (e.key === 'Escape') toggleNewFileModal(false);
 };
 
 // --- Terminal Factory ---
@@ -329,9 +363,9 @@ startTimer();
 async function pollProcessShield() {
     try {
         const response = await fetch('http://localhost:8080/scan');
-        if (!response.ok) return; 
+        if (!response.ok) return;
         const data = await response.json();
-        
+
         if (data.forbidden_found) {
             const apps = data.processes.join(', ');
             // Check if we just logged this to avoid spamming? 
@@ -422,7 +456,7 @@ function addLogEntry(type, message) {
     const entryDiv = document.createElement('div');
     entryDiv.className = 'log-entry';
     entryDiv.setAttribute('data-type', type);
-    
+
     entryDiv.innerHTML = `
         <div class="log-header">
             <span class="log-type-tag">${type}</span>
@@ -430,7 +464,7 @@ function addLogEntry(type, message) {
         </div>
         <div class="log-task">${message}</div>
     `;
-    
+
     logEntriesContainer.appendChild(entryDiv);
     logEntriesContainer.scrollTop = logEntriesContainer.scrollHeight;
 }
@@ -453,3 +487,18 @@ if (exportLogBtn) {
         }
     });
 }
+
+// --- Window Controls Logic ---
+const appWindow = getCurrentWindow();
+
+function attachWindowControl(id, action) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', action);
+    // STOPS the drag region from capturing the click
+    el.addEventListener('mousedown', (e) => e.stopPropagation());
+}
+
+attachWindowControl('win-close', () => appWindow.close());
+attachWindowControl('win-minimize', () => appWindow.minimize());
+attachWindowControl('win-maximize', () => appWindow.toggleMaximize());

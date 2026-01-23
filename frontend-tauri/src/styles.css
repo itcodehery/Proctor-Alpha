@@ -4,15 +4,18 @@
   --bg-surface: #141417;
   --bg-header: #1c1c21;
   --bg-active: #2a2a30;
-  
-  --accent-primary: #10b981; /* Emerald */
+
+  --accent-primary: #10b981;
+  /* Emerald */
   --accent-primary-hover: #059669;
   --accent-primary-alpha: rgba(16, 185, 129, 0.1);
-  
-  --accent-warning: #f59e0b; /* Amber */
-  --accent-danger: #ef4444;  /* Red */
+
+  --accent-warning: #f59e0b;
+  /* Amber */
+  --accent-danger: #ef4444;
+  /* Red */
   --accent-danger-hover: #dc2626;
-  
+
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
@@ -20,7 +23,7 @@
 
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-bright: rgba(255, 255, 255, 0.12);
-  
+
   --radius-xl: 16px;
   --radius-lg: 12px;
   --radius-md: 8px;
@@ -58,12 +61,119 @@ body {
 /* --- Professional Top Navigation --- */
 .top-nav {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 16px;
   align-items: center;
   padding: 12px 20px;
   background-color: var(--bg-app);
   border-bottom: 1px solid var(--border-subtle);
   z-index: 100;
+  position: relative;
+  /* For absolute drag handler */
+}
+
+/* Drag Handler Layer */
+.nav-drag-handler {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Ensure interactive elements are above drag handler */
+.window-controls,
+.logo-section,
+.session-info {
+  position: relative;
+  z-index: 50;
+  /* Higher than drag handler */
+  pointer-events: none;
+  /* Default to pass-through */
+}
+
+/* Re-enable pointer events for actual buttons/inputs */
+.win-btn,
+.end-session-btn,
+.admin-input {
+  pointer-events: auto;
+}
+
+/* Drag Handler Layer - Removed */
+
+/* Ensure interactive elements are above drag handler */
+.window-controls,
+.logo-section,
+.session-info {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+  /* Let clicks pass to drag handler by default */
+}
+
+/* Re-enable pointer events for actual buttons */
+.win-btn,
+.end-session-btn {
+  pointer-events: auto;
+}
+
+/* Window Controls (MacOS Style) */
+.window-controls {
+  display: flex;
+  gap: 8px;
+  margin-right: 4px;
+}
+
+.win-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.win-btn:active {
+  transform: scale(0.9);
+}
+
+.win-close {
+  background-color: #ff5f56;
+  border-color: #e0443e;
+}
+
+.win-minimize {
+  background-color: #ffbd2e;
+  border-color: #dea123;
+}
+
+.win-maximize {
+  background-color: #27c93f;
+  border-color: #1aab29;
+}
+
+/* Window Hover Icons */
+.window-controls:hover .win-close::before {
+  content: "✕";
+  font-size: 7px;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 800;
+}
+
+.window-controls:hover .win-minimize::before {
+  content: "−";
+  font-size: 7px;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 800;
+}
+
+.window-controls:hover .win-maximize::before {
+  content: "+";
+  font-size: 8px;
+  color: rgba(0, 0, 0, 0.6);
+  font-weight: 800;
 }
 
 .logo-section {
@@ -120,15 +230,31 @@ body {
 }
 
 /* Session Pause UI */
-.paused-only { display: none; }
-.paused-mode .paused-only { display: flex; }
-.paused-mode .active-only { display: none; }
+.paused-only {
+  display: none;
+}
+
+.paused-mode .paused-only {
+  display: flex;
+}
+
+.paused-mode .active-only {
+  display: none;
+}
+
 .paused-mode .status-indicator {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.2);
 }
-.paused-mode .dot { background-color: var(--accent-warning); box-shadow: 0 0 8px var(--accent-warning); }
-.paused-mode .status-text { color: var(--accent-warning); }
+
+.paused-mode .dot {
+  background-color: var(--accent-warning);
+  box-shadow: 0 0 8px var(--accent-warning);
+}
+
+.paused-mode .status-text {
+  color: var(--accent-warning);
+}
 
 .end-session-btn {
   background-color: var(--bg-header);
@@ -152,6 +278,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
+  margin-left: auto;
 }
 
 .session-label {
@@ -186,7 +313,8 @@ body {
   display: flex;
   gap: 8px;
   transition: filter 0.4s ease;
-  min-height: 0; /* Constraint for children */
+  min-height: 0;
+  /* Constraint for children */
 }
 
 .left-column,
@@ -195,7 +323,8 @@ body {
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  min-height: 0; /* Critical for internal scrolling */
+  min-height: 0;
+  /* Critical for internal scrolling */
 }
 
 .paused-mode .main-content {
@@ -212,7 +341,8 @@ body {
   overflow: hidden;
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-elevated);
-  min-height: 0; /* Allow window to shrink to fit layout */
+  min-height: 0;
+  /* Allow window to shrink to fit layout */
 }
 
 .window-header {
@@ -349,7 +479,9 @@ body {
   overflow-x: auto;
 }
 
-.tab-bar::-webkit-scrollbar { height: 2px; }
+.tab-bar::-webkit-scrollbar {
+  height: 2px;
+}
 
 .tab {
   height: 100%;
@@ -378,7 +510,10 @@ body {
   transition: opacity 0.2s;
 }
 
-.tab-close:hover { opacity: 1; color: var(--accent-danger); }
+.tab-close:hover {
+  opacity: 1;
+  color: var(--accent-danger);
+}
 
 .monaco-instance {
   flex: 1;
@@ -466,7 +601,9 @@ body {
   word-break: break-all;
 }
 
-.log-entry[data-type="command"] .log-task { color: var(--text-primary); }
+.log-entry[data-type="command"] .log-task {
+  color: var(--text-primary);
+}
 
 .export-log-btn {
   margin: 12px;
@@ -483,13 +620,27 @@ body {
   letter-spacing: 0.05em;
 }
 
-.export-log-btn:hover { background-color: var(--accent-primary-hover); }
-.export-log-btn:active { transform: scale(0.98); }
+.export-log-btn:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+.export-log-btn:active {
+  transform: scale(0.98);
+}
 
 /* --- xterm.js Customization --- */
-.xterm { padding: 12px; }
-.xterm-viewport::-webkit-scrollbar { width: 6px; }
-.xterm-viewport::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+.xterm {
+  padding: 12px;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: 3px;
+}
 
 /* --- Gutters --- */
 .gutter {
@@ -505,13 +656,35 @@ body {
   transition: background 0.3s ease;
 }
 
-.gutter:hover::after { background: var(--accent-primary); }
+.gutter:hover::after {
+  background: var(--accent-primary);
+}
 
-.gutter.gutter-horizontal { cursor: col-resize; width: 6px !important; }
-.gutter.gutter-horizontal::after { top: 10px; bottom: 10px; left: 2px; width: 2px; border-radius: 1px; }
+.gutter.gutter-horizontal {
+  cursor: col-resize;
+  width: 6px !important;
+}
 
-.gutter.gutter-vertical { cursor: row-resize; height: 6px !important; }
-.gutter.gutter-vertical::after { left: 10px; right: 10px; top: 2px; height: 2px; border-radius: 1px; }
+.gutter.gutter-horizontal::after {
+  top: 10px;
+  bottom: 10px;
+  left: 2px;
+  width: 2px;
+  border-radius: 1px;
+}
+
+.gutter.gutter-vertical {
+  cursor: row-resize;
+  height: 6px !important;
+}
+
+.gutter.gutter-vertical::after {
+  left: 10px;
+  right: 10px;
+  top: 2px;
+  height: 2px;
+  border-radius: 1px;
+}
 
 /* --- High-End Modal --- */
 .dialog-overlay {
@@ -526,7 +699,15 @@ body {
   animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
 
 .modal {
   background: var(--bg-surface);
@@ -599,9 +780,19 @@ body {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  75% { transform: translateX(6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-6px);
+  }
+
+  75% {
+    transform: translateX(6px);
+  }
 }
 
 .modal-close-icon {
@@ -613,4 +804,6 @@ body {
   transition: color 0.2s;
 }
 
-.modal-close-icon:hover { color: var(--text-primary); }
+.modal-close-icon:hover {
+  color: var(--text-primary);
+}

@@ -15,7 +15,10 @@
         "title": "Proctor",
         "decorations": false,
         "width": 1000,
-        "height": 800
+        "height": 800,
+        "resizable": true,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {

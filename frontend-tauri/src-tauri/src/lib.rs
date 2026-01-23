@@ -221,17 +221,46 @@ pub fn run() {
             // Removed Editor PTY (Vim Restricted) - Switched to Monaco
             
             // Spawn Terminal PTY (Full Shell) with history logging
-            // Removed restricted mode to allow user full control and prevent config errors
-            let history_file = internal_path.join(".cmd_history").to_string_lossy().to_string();
-            let shell_cmd = format!(
-                "export HISTFILE='{}'; export PROMPT_COMMAND='history -a'; while true; do /bin/bash; done", 
-                history_file
-            );
+            // MacOS: Use zsh with custom ZDOTDIR to force history logging without messing up user config
+            // MacOS: Use zsh with custom ZDOTDIR to force history logging without messing up user config
+            #[cfg(target_os = "macos")]
+            let shell_cmd = {
+                let zshrc_path = internal_path.join(".zshrc");
+                let history_file = internal_path.join(".cmd_history");
+                
+                // create custom .zshrc that sources user's config but forces our history settings
+                let zshrc_content = format!(
+                    r#"
+                    # Source user's default config if it exists
+                    [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
+                    
+                    # Force Proctor History Settings
+                    export HISTFILE="{}"
+                    setopt INC_APPEND_HISTORY
+                    setopt SHARE_HISTORY
+                    "#,
+                    history_file.to_string_lossy()
+                );
+                
+                let _ = fs::write(&zshrc_path, zshrc_content);
+                
+                // For macOS, we construct a command that sets ZDOTDIR and runs zsh
+                format!("export ZDOTDIR='{}'; exec /bin/zsh -l", internal_path.to_string_lossy())
+            };
+            
+            #[cfg(not(target_os = "macos"))]
+            let shell_cmd = {
+                let history_file = internal_path.join(".cmd_history").to_string_lossy().to_string();
+                format!(
+                     "export HISTFILE='{}'; export PROMPT_COMMAND='history -a'; while true; do /bin/bash; done", 
+                     history_file
+                )
+            };
 
             ptys.insert("terminal".to_string(), spawn_pty(
                 app_handle.clone(), 
                 "terminal".to_string(), 
-                "sh", 
+                "sh",
                 &["-c", &shell_cmd],
                 workspace_path.clone()
             ));

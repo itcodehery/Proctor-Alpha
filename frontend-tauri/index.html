@@ -12,7 +12,13 @@
 
 <body>
   <div id="app">
-    <nav class="top-nav" data-tauri-drag-region role="navigation" aria-label="Main Navigation">
+    <nav class="top-nav" role="navigation" aria-label="Main Navigation">
+      <div class="nav-drag-handler" data-tauri-drag-region></div>
+      <div class="window-controls">
+        <div class="win-btn win-close" id="win-close"></div>
+        <div class="win-btn win-minimize" id="win-minimize"></div>
+        <div class="win-btn win-maximize" id="win-maximize"></div>
+      </div>
       <div class="logo-section" data-tauri-drag-region>
         <div class="logo-box">PS</div>
         <span class="logo-text">Proctor</span>
@@ -64,7 +70,7 @@
               </div>
             </div>
           </section>
-          
+
           <section id="pane-terminal" class="window terminal" aria-label="System Terminal">
             <div class="window-header">
               <span class="window-title">Terminal Shell</span>
@@ -97,10 +103,33 @@
         <div class="modal-close-icon" role="button" aria-label="Close dialog">✕</div>
         <div class="modal-icon">!</div>
         <h2 id="modal-title" class="modal-title">End Session?</h2>
-        <p class="modal-text">Enter the Admin Key to finalize and export this session. All workspace files will be saved.</p>
-        
+        <p class="modal-text">Enter the Admin Key to finalize and export this session. All workspace files will be
+          saved.</p>
+
         <div class="admin-input-container">
-          <input type="password" class="admin-input" id="admin-input" placeholder="Enter Admin Key" aria-label="Admin Key" />
+          <input type="password" class="admin-input" id="admin-input" placeholder="Enter Admin Key"
+            aria-label="Admin Key" />
+        </div>
+      </div>
+    </div>
+
+    <!-- New File Dialog -->
+    <div id="new-file-dialog" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="new-file-title">
+      <div class="modal">
+        <div class="modal-close-icon" id="new-file-close-icon" role="button" aria-label="Close dialog">✕</div>
+        <div class="modal-icon"
+          style="background: rgba(16, 185, 129, 0.1); color: var(--accent-primary); border-color: var(--accent-primary);">
+          +</div>
+        <h2 id="new-file-title" class="modal-title">New File</h2>
+        <p class="modal-text">Enter the name for the new file (e.g., script.py)</p>
+
+        <div class="admin-input-container">
+          <input type="text" class="admin-input" id="new-file-input" placeholder="filename.ext"
+            aria-label="File Name" />
+        </div>
+        <div style="margin-top: 24px;">
+          <button id="create-file-confirm-btn" class="end-session-btn"
+            style="width: 100%; border-color: var(--accent-primary); color: var(--accent-primary);">Create File</button>
         </div>
       </div>
     </div>
