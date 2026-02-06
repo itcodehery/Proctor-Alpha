@@ -226,6 +226,74 @@
           </div>
         </div>
       </div>
+
+      <!-- Room Details Overlay (Drill Down) -->
+      <div id="room-details-view" class="drill-down-view">
+        <div class="view-header">
+          <button id="rd-back-btn" class="icon-toggle-btn">← Back</button>
+          <h2 id="rd-title">Room Details</h2>
+          <div class="action-group">
+            <span id="rd-status-badge" class="status-badge status-waiting">WAITING</span>
+            <button id="rd-save-btn" class="end-session-btn" style="padding: 6px 16px;">Save Changes</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="students">Students</button>
+          <button class="tab-btn" data-tab="settings">Settings</button>
+          <button class="tab-btn" data-tab="sets">Sets (Q&A)</button>
+        </div>
+
+        <div class="tab-content active" id="tab-students">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Reg No.</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>IP Address</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rd-students-body"></tbody>
+          </table>
+          <div id="rd-students-empty" class="empty-state">No students joined yet.</div>
+        </div>
+
+        <div class="tab-content" id="tab-settings" style="display: none;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Session Name</label>
+              <input type="text" id="rd-name" class="admin-input">
+            </div>
+            <div class="form-group">
+              <label>Duration (Minutes)</label>
+              <input type="number" id="rd-duration" class="admin-input">
+            </div>
+            <div class="form-group">
+              <label>Admin Key (Verify to Save)</label>
+              <input type="password" id="rd-key" class="admin-input" placeholder="Required to save">
+            </div>
+            <div class="form-group">
+              <label>Room Status</label>
+              <select id="rd-status-select" class="admin-input">
+                <option value="0">Waiting</option>
+                <option value="1">Active</option>
+                <option value="3">Paused</option>
+                <option value="4">Complete</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-sets" style="display: none;">
+          <div class="sets-editor">
+            <textarea id="rd-sets-json" class="admin-input" style="height: 300px; font-family: monospace;"
+              placeholder='{"SetA": "https://...", "SetB": "https://..."}'></textarea>
+            <p class="hint-text">Enter JSON format: {"Set Name": "URL"}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Create Room Dialog -->

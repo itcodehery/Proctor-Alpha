@@ -808,23 +808,31 @@ async function fetchRooms() {
             return;
         }
 
-        rooms.forEach(room => {
+        rooms.forEach(r => {
             const tr = document.createElement('tr');
-            const statusClass = room.active_status === 1 ? 'status-active' : 'status-waiting';
-            const statusText = room.active_status === 1 ? 'Active' : 'Waiting';
-            const startTime = room.start_time ? new Date(room.start_time).toLocaleTimeString() : '-';
+            tr.className = 'room-row';
+            tr.dataset.id = r.id; // Store ID for click
+            tr.style.cursor = 'pointer';
+
+            // Format time
+            const startTime = r.start_time ? new Date(r.start_time).toLocaleTimeString() : '-';
+
+            let statusBadge = '';
+            if (r.active_status === 0) statusBadge = '<span class="status-badge status-waiting">Waiting</span>';
+            else if (r.active_status === 1) statusBadge = '<span class="status-badge status-active">Active</span>';
+            else statusBadge = '<span class="status-badge">Finished</span>';
 
             tr.innerHTML = `
-                <td style="font-family: var(--font-mono);">${room.id.substring(0, 8)}</td>
-                <td>${room.session_name}</td>
-                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td class="mono">${r.host_id}</td>
+                <td>${r.session_name}</td>
+                <td>${statusBadge}</td>
                 <td>${startTime}</td>
-                <td>
-                   <button class="icon-btn" style="color: var(--text-muted);" title="Details">ℹ️</button>
-                </td>
+                <td><button class="small-btn">View</button></td>
             `;
             tbody.appendChild(tr);
         });
+
+        bindRoomListEvents();
 
     } catch (e) {
         console.error("Failed to fetch rooms:", e);
@@ -887,4 +895,210 @@ if (crSubmitBtn) {
             alert("Error creating room: " + e);
         }
     };
+}
+
+// --- Room Details Logic ---
+let currentRoomId = null;
+let roomPollInterval = null;
+
+async function openRoomDetails(roomId) {
+    currentRoomId = roomId;
+    const detailsView = document.getElementById('room-details-view');
+    detailsView.classList.add('active');
+
+    // Initial fetch
+    await fetchRoomDetails();
+
+    // Start polling for students
+    if (roomPollInterval) clearInterval(roomPollInterval);
+    roomPollInterval = setInterval(fetchRoomDetails, 3000);
+}
+
+function closeRoomDetails() {
+    const detailsView = document.getElementById('room-details-view');
+    detailsView.classList.remove('active');
+    currentRoomId = null;
+    if (roomPollInterval) clearInterval(roomPollInterval);
+    fetchRooms(); // Refresh main list
+}
+
+document.getElementById('rd-back-btn').addEventListener('click', closeRoomDetails);
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Deactivate all
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => {
+            c.style.display = 'none';
+            c.classList.remove('active');
+        });
+
+        // Activate current
+        btn.classList.add('active');
+        const tabId = btn.dataset.tab;
+        const content = document.getElementById(`tab-${tabId}`);
+        content.style.display = 'block';
+        content.classList.add('active');
+    });
+});
+
+async function fetchRoomDetails() {
+    if (!currentRoomId) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/get-room?room_id=${currentRoomId}`);
+        if (!res.ok) return;
+        const room = await res.json();
+
+        // Update Header
+        document.getElementById('rd-title').innerText = room.session_name;
+        const badge = document.getElementById('rd-status-badge');
+        updateBadge(badge, room.active_status);
+
+        // Update Settings Form (only if not focused)
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            document.getElementById('rd-name').value = room.session_name;
+            document.getElementById('rd-duration').value = room.time_allocated ? (room.time_allocated / 60000000000) : 0; // ns to min? Go Duration is ns. wait.
+            // Go JSON duration is usually represented as string "1h2m" or similar if generic json marshal, but here it might be ns number.
+            // Let's check Go struct. It treats Duration as int64 ns often in stdlib? No, standard json marshal for time.Duration is integer ns.
+            // Actually standard json marshal for duration is just number of nanoseconds.
+            // 1 min = 60 * 1000 * 1000 * 1000 = 6e10.
+            document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
+
+            document.getElementById('rd-status-select').value = room.active_status;
+
+            // Update Sets
+            if (room.sets) {
+                document.getElementById('rd-sets-json').value = JSON.stringify(room.sets, null, 2);
+            }
+        }
+
+        // Update Students List
+        const tbody = document.getElementById('rd-students-body');
+        const empty = document.getElementById('rd-students-empty');
+        tbody.innerHTML = '';
+
+        if (!room.students || room.students.length === 0) {
+            empty.style.display = 'block';
+        } else {
+            empty.style.display = 'none';
+            room.students.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${s.regno}</td>
+                    <td>${s.username || 'N/A'}</td>
+                    <td>${getStatusBadgeHTML(s.active_status)}</td>
+                    <td class="mono">${s.ip_address}</td>
+                    <td>
+                        <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+    } catch (e) {
+        console.error("Fetch details error:", e);
+    }
+}
+
+// Save Changes
+document.getElementById('rd-save-btn').addEventListener('click', async () => {
+    if (!currentRoomId) return;
+    const name = document.getElementById('rd-name').value;
+    const durationMins = parseInt(document.getElementById('rd-duration').value);
+    const status = parseInt(document.getElementById('rd-status-select').value);
+    const key = document.getElementById('rd-key').value;
+    let sets = null;
+
+    try {
+        const setVal = document.getElementById('rd-sets-json').value;
+        if (setVal) sets = JSON.parse(setVal);
+    } catch (e) {
+        alert("Invalid JSON for Sets");
+        return;
+    }
+
+    if (!key) {
+        alert("Admin Key is required to save changes.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/update-room`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                admin_key: key,
+                session_name: name,
+                time_allocated: durationMins * 60000000000,
+                active_status: status,
+                sets: sets
+            })
+        });
+
+        if (res.ok) {
+            alert("Changes saved!");
+            fetchRoomDetails();
+        } else {
+            alert("Failed: " + await res.text());
+        }
+    } catch (e) {
+        alert("Error: " + e);
+    }
+});
+
+function getStatusBadgeHTML(status) {
+    // 0: Online, 1: Offline/Kick, 2: Submitted, 3: Flagged
+    // Based on UStatusEnum in backend
+    switch (status) {
+        case 0: return '<span class="status-badge status-active">Online</span>';
+        case 1: return '<span class="status-badge" style="color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.1)">Offline</span>';
+        case 2: return '<span class="status-badge" style="color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.1)">Submitted</span>';
+        case 3: return '<span class="status-badge" style="color:#f59e0b; border-color:#f59e0b; background:rgba(245,158,11,0.1)">Flagged</span>';
+        default: return 'Unknown';
+    }
+}
+
+function updateBadge(el, status) {
+    // 0: Waiting, 1: Active, 2: NetworkLoss, 3: Paused, 4: Complete
+    el.className = 'status-badge';
+    if (status === 0) { el.classList.add('status-waiting'); el.innerText = 'WAITING'; }
+    else if (status === 1) { el.classList.add('status-active'); el.innerText = 'ACTIVE'; }
+    else if (status === 3) { el.classList.add('status-waiting'); el.innerText = 'PAUSED'; el.style.color = '#f59e0b'; }
+    else if (status === 4) { el.classList.add('status-active'); el.innerText = 'COMPLETE'; el.style.color = '#3b82f6'; }
+}
+
+// Expose for onClick
+window.moderateStudent = async (userId, status) => {
+    const key = prompt("Enter Admin Key to Confirm Action:");
+    if (!key) return;
+
+    try {
+        await fetch(`${API_BASE}/admin/update-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: userId,
+                admin_key: key,
+                status: status
+            })
+        });
+        fetchRoomDetails();
+    } catch (e) {
+        alert(e);
+    }
+};
+
+// Update Room List Click Handler
+function bindRoomListEvents() {
+    document.querySelectorAll('.room-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const id = row.dataset.id;
+            openRoomDetails(id);
+        });
+    });
 }
