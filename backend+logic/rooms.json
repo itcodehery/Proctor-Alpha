@@ -1,0 +1,38 @@
+{
+  "0146db61-e331-42e0-b7e3-7a5b8b048581": {
+    "id": "0146db61-e331-42e0-b7e3-7a5b8b048581",
+    "host_id": "JAIS123",
+    "session_name": "CIA 1 MCA A",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "1915",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "students": []
+  },
+  "29e72072-4a3d-4ec2-b043-7b2ab4cde4bb": {
+    "id": "29e72072-4a3d-4ec2-b043-7b2ab4cde4bb",
+    "host_id": "B1234",
+    "session_name": "CIA 2 MCA A",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "1915",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "students": []
+  },
+  "a5c0ee60-c057-4bd2-b9a4-90e1d99660a8": {
+    "id": "a5c0ee60-c057-4bd2-b9a4-90e1d99660a8",
+    "host_id": "A123",
+    "session_name": "CIA 3 MCA A",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "1234",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "students": []
+  }
+}

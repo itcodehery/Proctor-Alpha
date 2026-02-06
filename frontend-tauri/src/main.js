@@ -633,6 +633,11 @@ attachWindowControl('landing-close', () => appWindow.close());
 attachWindowControl('landing-minimize', () => appWindow.minimize());
 attachWindowControl('landing-maximize', () => appWindow.toggleMaximize());
 
+// Attach to Join Room controls
+attachWindowControl('join-close', () => appWindow.close());
+attachWindowControl('join-minimize', () => appWindow.minimize());
+attachWindowControl('join-maximize', () => appWindow.toggleMaximize());
+
 
 // --- Landing Page Logic ---
 const landingContainer = document.getElementById('landing-container');
@@ -652,6 +657,9 @@ const monitorShieldBtn = document.getElementById('monitor-shield-btn');
 const shieldStatusText = document.getElementById('shield-status-text');
 
 const API_BASE = "http://localhost:8080";
+const WS_BASE = "ws://localhost:8080/ws";
+let ws = null;
+let wsRetries = 0;
 const { Command } = window.__TAURI__.shell; // Access shell plugin
 
 // Backend Management
@@ -722,16 +730,112 @@ async function startBackend() {
 // Polling for health when on admin page
 let healthInterval;
 
+// --- Join Room Logic ---
+const joinContainer = document.getElementById('join-room-container');
+const joinBackBtn = document.getElementById('join-back-btn');
+const joinSubmitBtn = document.getElementById('join-submit-btn');
+const joinNameInput = document.getElementById('join-name');
+const joinRegNoInput = document.getElementById('join-regno');
+const joinRoomIdInput = document.getElementById('join-room-id');
+const joinError = document.getElementById('join-error');
+
 if (btnStudent) {
     btnStudent.addEventListener('click', () => {
-        if (landingContainer) {
+        if (landingContainer && joinContainer) {
             landingContainer.classList.add('fade-out');
+            joinContainer.classList.remove('fade-out');
+            setTimeout(() => joinNameInput.focus(), 100);
+        }
+    });
+}
+
+if (joinBackBtn) {
+    joinBackBtn.addEventListener('click', () => {
+        if (landingContainer && joinContainer) {
+            joinContainer.classList.add('fade-out');
+            landingContainer.classList.remove('fade-out');
+        }
+    });
+}
+
+function showJoinError(msg) {
+    if (!joinError) return;
+    joinError.innerText = msg;
+    joinError.style.display = 'block';
+    joinError.classList.add('error'); // Trigger shake
+    setTimeout(() => {
+        joinError.classList.remove('error');
+    }, 500);
+    // Hide after 3s? Maybe keep it until user types.
+}
+
+async function handleJoinRoom() {
+    const name = joinNameInput.value.trim();
+    const regNo = joinRegNoInput.value.trim();
+    const roomId = joinRoomIdInput.value.trim();
+
+    if (!name || !regNo || !roomId) {
+        showJoinError("Please fill in all fields.");
+        return;
+    }
+    joinSubmitBtn.innerText = "Joining...";
+    joinSubmitBtn.disabled = true;
+    joinError.style.display = 'none';
+
+    console.log(`[DEBUG] Attempting to join room: ${roomId} as ${name} (${regNo})`);
+    console.log(`[DEBUG] API URL: ${API_BASE}/join-room`);
+
+    try {
+        const res = await fetch(`${API_BASE}/join-room`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: roomId,
+                username: name,
+                regno: regNo,
+                user_id: regNo // Using RegNo as ID for simplicity
+            })
+        });
+
+        console.log(`[DEBUG] Response Status: ${res.status}`);
+        const data = await res.json();
+        console.log(`[DEBUG] Response Data:`, data);
+
+        if (res.ok) {
+            // Success!
+            // console.log("Joined!", data);
+
+            // Navigate to IDE
+            joinContainer.classList.add('fade-out');
+
+            // Adjust IDE layout
             setTimeout(() => {
                 if (shell && shell.fitAddon) shell.fitAddon.fit();
                 if (monacoEditor) monacoEditor.layout();
             }, 300);
+
+            // TODO: Update UI with session info if needed
+        } else {
+            showJoinError(data.message || "Failed to join room");
         }
-    });
+    } catch (e) {
+        console.error("[DEBUG] Join Room Error Details:", e);
+        showJoinError("Server unreachable. Ensure Admin has started the exam server.");
+    } finally {
+        joinSubmitBtn.innerText = "Join Session";
+        joinSubmitBtn.disabled = false;
+    }
+}
+
+if (joinSubmitBtn) {
+    joinSubmitBtn.onclick = handleJoinRoom;
+}
+
+// Allow Enter key to submit in last input
+if (joinRoomIdInput) {
+    joinRoomIdInput.onkeydown = (e) => {
+        if (e.key === 'Enter') handleJoinRoom();
+    };
 }
 
 if (btnAdmin) {
@@ -740,12 +844,14 @@ if (btnAdmin) {
             landingContainer.classList.add('fade-out');
             adminContainer.classList.remove('fade-out');
 
-            // Check Health & Try Start
-            await checkBackendHealth();
-            // Start polling
+            // Start polling (health only, rooms via WS)
             healthInterval = setInterval(checkBackendHealth, 5000);
 
+            // Fetch initial state
             fetchRooms();
+
+            // Connect Realtime
+            initWebSocket();
         }
     });
 }
@@ -909,16 +1015,28 @@ async function openRoomDetails(roomId) {
     // Initial fetch
     await fetchRoomDetails();
 
-    // Start polling for students
-    if (roomPollInterval) clearInterval(roomPollInterval);
-    roomPollInterval = setInterval(fetchRoomDetails, 3000);
+    // Subscribe to real-time updates for THIS room
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            action: "subscribe_room",
+            room_id: roomId
+        }));
+    }
 }
 
 function closeRoomDetails() {
     const detailsView = document.getElementById('room-details-view');
     detailsView.classList.remove('active');
+
+    // Unsubscribe
+    if (ws && ws.readyState === WebSocket.OPEN && currentRoomId) {
+        ws.send(JSON.stringify({
+            action: "unsubscribe_room",
+            room_id: currentRoomId
+        }));
+    }
+
     currentRoomId = null;
-    if (roomPollInterval) clearInterval(roomPollInterval);
     fetchRooms(); // Refresh main list
 }
 
@@ -1129,3 +1247,131 @@ function bindRoomListEvents() {
         });
     });
 }
+
+// --- WebSocket Logic ---
+function initWebSocket() {
+    if (ws) return; // Already initialized
+
+    ws = new WebSocket(WS_BASE);
+
+    ws.onopen = () => {
+        console.log("WS Connected");
+        wsRetries = 0;
+        updateServerStatus(true);
+
+        // Subscribe to All Rooms List by default if we are in admin view
+        if (!adminContainer.classList.contains('fade-out')) {
+            ws.send(JSON.stringify({ action: "subscribe_all" }));
+        }
+    };
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === "ROOM_LIST_UPDATE") {
+                fetchRooms();
+            } else if (msg.type === "ROOM_UPDATE") {
+                // If the payload is the room object, we can update UI directly?
+                // Or just re-fetch to be safe/simple.
+                // The payload IS the room object.
+                const updatedRoom = msg.payload;
+
+                // If we are looking at this room, update details
+                if (currentRoomId && updatedRoom.id === currentRoomId) {
+                    // Optimized: direct update if payload has data, else fetch
+                    if (updatedRoom) {
+                        updateRoomDetailsUI(updatedRoom);
+                    } else {
+                        fetchRoomDetails();
+                    }
+                }
+            }
+
+        } catch (e) {
+            console.error("WS Msg Error:", e);
+        }
+    };
+
+    ws.onclose = () => {
+        console.log("WS Closed");
+        ws = null;
+        updateServerStatus(false);
+
+        // Retry logic
+        if (wsRetries < 5) {
+            wsRetries++;
+            setTimeout(initWebSocket, 2000);
+        }
+    };
+
+    ws.onerror = (e) => {
+        console.error("WS Error:", e);
+    };
+}
+
+// Refactored UI update for reuse
+function updateRoomDetailsUI(room) {
+    if (!room) return;
+
+    // Update Header
+    document.getElementById('rd-title').innerText = room.session_name;
+    const badge = document.getElementById('rd-status-badge');
+    updateBadge(badge, room.active_status);
+
+    // Update Students List
+    const tbody = document.getElementById('rd-students-body');
+    const empty = document.getElementById('rd-students-empty');
+    tbody.innerHTML = '';
+
+    if (!room.students || room.students.length === 0) {
+        empty.style.display = 'block';
+    } else {
+        empty.style.display = 'none';
+        room.students.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${s.regno}</td>
+                <td>${s.username || 'N/A'}</td>
+                <td>${getStatusBadgeHTML(s.active_status)}</td>
+                <td class="mono">${s.ip_address}</td>
+                <td>
+                    <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+// Hook fetchRoomDetails to use the shared UI updater
+const originalFetchDetails = fetchRoomDetails;
+fetchRoomDetails = async () => {
+    if (!currentRoomId) return;
+    try {
+        const res = await fetch(`${API_BASE}/get-room?room_id=${currentRoomId}`);
+        if (!res.ok) return;
+        const room = await res.json();
+
+        // Settings form population remains here because it checks focus
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            document.getElementById('rd-name').value = room.session_name;
+            document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
+            document.getElementById('rd-status-select').value = room.active_status;
+
+            const container = document.getElementById('sets-container');
+            container.innerHTML = '';
+            if (room.sets && Object.keys(room.sets).length > 0) {
+                for (const [key, val] of Object.entries(room.sets)) {
+                    addSetRow(key, val);
+                }
+            } else {
+                addSetRow();
+            }
+        }
+
+        updateRoomDetailsUI(room);
+    } catch (e) {
+        console.error(e);
+    }
+};

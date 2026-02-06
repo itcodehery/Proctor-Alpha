@@ -63,7 +63,19 @@ type UserSession struct {
 var (
 	rooms = make(map[string]*Room)
 	mu    sync.RWMutex
+	// wsHub is defined in main.go but accessible here as same package
 )
+
+func broadcastUpdate(target string, msgType string, payload interface{}) {
+	if wsHub == nil {
+		return
+	}
+	wsHub.broadcast <- Message{
+		Type:    msgType,
+		Payload: payload,
+		Target:  target,
+	}
+}
 
 func generateID() string {
 	b := make([]byte, 8)
@@ -211,6 +223,9 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 
 	saveRooms() // Persist the new room
+	
+	// Broadcast List Update
+	broadcastUpdate("all", "ROOM_LIST_UPDATE", nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -221,11 +236,14 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 // JoinRoomHandler allows a user to join a specific room
 func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("[DEBUG] JoinRoomHandler Hit")
 	enableCors(&w)
 	if r.Method == "OPTIONS" {
+		fmt.Println("[DEBUG] JoinRoomHandler OPTIONS")
 		return
 	}
 	if r.Method != "POST" {
+		fmt.Println("[DEBUG] JoinRoomHandler Method Not Allowed:", r.Method)
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -235,15 +253,18 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		UserSession
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Println("[DEBUG] JoinRoomHandler Decode Error:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	fmt.Printf("[DEBUG] Join Request: %+v\n", req)
 
 	mu.Lock()
 	defer mu.Unlock()
 
 	room, exists := rooms[req.RoomID]
 	if !exists {
+		fmt.Printf("[DEBUG] Room Not Found: %s. Available: %v\n", req.RoomID, rooms)
 		http.Error(w, "Room not found", http.StatusNotFound)
 		return
 	}
@@ -269,6 +290,9 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 	newUser.IpAddress = r.RemoteAddr
 
 	room.Students = append(room.Students, newUser)
+
+	// Broadcast Room Update (specifically to observers of this room)
+	broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -318,6 +342,9 @@ func AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		if s.UserID == req.UserID {
 			room.Students[i].ActiveStatus = req.Status
 			found = true
+			
+			// Broadcast Update
+			broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)			
 			break
 		}
 	}
@@ -446,6 +473,11 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Room updated successfully",
 	})
+
+	// Broadcast updates
+	broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)
+	// Also broadcast list update in case name/status changed
+	broadcastUpdate("all", "ROOM_LIST_UPDATE", nil)
 
 	// Save state
 	go saveRooms()

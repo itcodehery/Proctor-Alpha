@@ -15,6 +15,11 @@ type ScanResult struct {
 }
 
 var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify", "zen"}
+var wsHub *Hub
+
+func serveWsHandler(w http.ResponseWriter, r *http.Request) {
+	serveWs(wsHub, w, r)
+}
 
 func GetLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
@@ -80,6 +85,11 @@ func main() {
 		fmt.Printf("Admin: Share this IP with students: %s\n", ip)
 	}
 
+	// Initialize WebSocket Hub
+	wsHub = newHub()
+	go wsHub.run()
+
+	http.HandleFunc("/ws", serveWsHandler)
 	http.HandleFunc("/scan", checkProcessesHandler)
 	http.HandleFunc("/create-room", CreateRoomHandler)
 	http.HandleFunc("/join-room", JoinRoomHandler)
