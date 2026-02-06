@@ -887,3 +887,170 @@ body {
 .modal-close-icon:hover {
   color: var(--text-primary);
 }
+
+/* --- Overlay Architecture --- */
+.full-screen-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+
+#ide-container {
+  z-index: 10;
+  background-color: var(--bg-app);
+}
+
+#landing-container {
+  z-index: 20;
+  background-color: var(--bg-app);
+}
+
+/* Transitions */
+.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Landing Page Header */
+.landing-header {
+  height: 44px;
+  /* Match standard header height */
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  /* -drag-region is handled by html attr, but we need layout */
+}
+
+/* --- Landing Page Styling --- */
+.landing-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  animation: fadeScale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: 44px;
+  /* Balance visual center */
+}
+
+@keyframes fadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.landing-logo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.landing-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.landing-title .highlight {
+  color: var(--accent-primary);
+  background: none;
+  -webkit-text-fill-color: initial;
+}
+
+.landing-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-selection {
+  display: flex;
+  gap: 16px;
+}
+
+.role-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  width: 240px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-primary);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3);
+}
+
+.role-card:active {
+  transform: translateY(0);
+}
+
+.card-icon {
+  font-size: 24px;
+  color: var(--text-secondary);
+}
+
+.card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.role-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.role-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Hover States */
+.admin-card:hover .role-title,
+.admin-card:hover .card-icon {
+  color: var(--accent-warning);
+}
+
+.student-card:hover .role-title,
+.student-card:hover .card-icon {
+  color: var(--accent-primary);
+}

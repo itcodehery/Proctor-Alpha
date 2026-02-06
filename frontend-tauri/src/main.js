@@ -33,7 +33,7 @@ let activeFileName = null;
 const unsavedFiles = new Set();
 let autoSaveEnabled = false;
 let typingTimer = null;
-const TYPING_TIMEOUT = 5000; // 5 seconds
+const TYPING_TIMEOUT = 3000; // 3 seconds
 
 function initMonaco() {
     monacoEditor = monaco.editor.create(document.getElementById('monaco-container'), {
@@ -618,6 +618,49 @@ function attachWindowControl(id, action) {
     el.addEventListener('mousedown', (e) => e.stopPropagation());
 }
 
+// Attach to IDE controls
+attachWindowControl('ide-close', () => appWindow.close());
+attachWindowControl('ide-minimize', () => appWindow.minimize());
+attachWindowControl('ide-maximize', () => appWindow.toggleMaximize());
+
+// Attach to global/landing controls if they exist (old IDs from reverted state might still be in memory or if IDs change)
 attachWindowControl('win-close', () => appWindow.close());
 attachWindowControl('win-minimize', () => appWindow.minimize());
 attachWindowControl('win-maximize', () => appWindow.toggleMaximize());
+
+// Attach to Landing Page controls (Specific IDs)
+attachWindowControl('landing-close', () => appWindow.close());
+attachWindowControl('landing-minimize', () => appWindow.minimize());
+attachWindowControl('landing-maximize', () => appWindow.toggleMaximize());
+
+
+// --- Landing Page Logic ---
+const landingContainer = document.getElementById('landing-container');
+const btnStudent = document.getElementById('btn-student');
+const btnAdmin = document.getElementById('btn-admin');
+
+if (btnStudent) {
+    btnStudent.addEventListener('click', () => {
+        // Overlay Architecture: Fade out the landing container
+        // The IDE is ALREADY rendered behind it, so no layout thrashing occurs.
+        if (landingContainer) {
+            landingContainer.classList.add('fade-out');
+
+            // Optional: Layout refresh just in case, but usually not needed with this architecture
+            setTimeout(() => {
+                if (shell && shell.fitAddon) shell.fitAddon.fit();
+                if (monacoEditor) monacoEditor.layout();
+            }, 300);
+        }
+    });
+}
+
+if (btnAdmin) {
+    btnAdmin.addEventListener('click', () => {
+        // Placeholder for admin
+        const card = btnAdmin.querySelector('.role-card') || btnAdmin;
+        card.style.borderColor = 'var(--accent-warning)'; // Warning color for admin
+        setTimeout(() => card.style.borderColor = '', 300);
+        alert('Admin Panel: Access Restricted (Placeholder)');
+    });
+}
