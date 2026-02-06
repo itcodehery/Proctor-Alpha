@@ -471,12 +471,20 @@ body {
   min-width: 0;
 }
 
-.tab-bar {
+/* --- Tab Bar & Header --- */
+.editor-tabs-container {
   height: 36px;
   display: flex;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border-subtle);
+  justify-content: space-between;
+}
+
+.tab-bar {
+  display: flex;
   overflow-x: auto;
+  flex: 1;
+  /* Take remaining space */
 }
 
 .tab-bar::-webkit-scrollbar {
@@ -496,6 +504,7 @@ body {
   background: var(--bg-app);
   max-width: 160px;
   transition: all 0.2s;
+  user-select: none;
 }
 
 .tab.active {
@@ -504,15 +513,86 @@ body {
   box-shadow: inset 0 2px 0 var(--accent-primary);
 }
 
+.tab.unsaved {
+  font-style: italic;
+}
+
+.tab.unsaved::after {
+  content: "●";
+  font-size: 8px;
+  color: var(--accent-warning);
+  margin-left: 4px;
+}
+
 .tab-close {
   font-size: 14px;
   opacity: 0.5;
   transition: opacity 0.2s;
+  margin-left: auto;
+  /* Push close button to right of tab */
 }
 
 .tab-close:hover {
   opacity: 1;
   color: var(--accent-danger);
+}
+
+.tab-actions {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 8px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.tab-action-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+
+.auto-save-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-right: 1px solid var(--border-subtle);
+  padding-right: 8px;
+  margin-right: 4px;
+}
+
+.save-status {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  min-width: 40px;
+  text-align: right;
+}
+
+.icon-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+
+.icon-toggle-btn.enabled {
+  background: var(--accent-primary-alpha);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.icon-toggle-btn:hover {
+  border-color: var(--text-secondary);
+}
+
+.auto-save-icon {
+  font-size: 12px;
 }
 
 .monaco-instance {

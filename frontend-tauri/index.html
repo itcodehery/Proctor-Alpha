@@ -63,8 +63,19 @@
                 </div>
               </aside>
               <div class="editor-main">
-                <div id="tab-bar" class="tab-bar">
-                  <!-- Tabs will be added here -->
+                <div class="editor-tabs-container">
+                  <div id="tab-bar" class="tab-bar">
+                    <!-- Tabs will be added here -->
+                  </div>
+                  <div class="tab-actions">
+                    <div class="auto-save-control">
+                      <span id="save-status" class="save-status">Saved</span>
+                      <button id="auto-save-toggle" class="icon-toggle-btn" title="Toggle Auto-Save">
+                        <span class="auto-save-icon">⚡</span>
+                      </button>
+                    </div>
+                    <button id="save-file-btn" class="icon-btn tab-action-btn" title="Save File (Ctrl+S)">💾</button>
+                  </div>
                 </div>
                 <div id="monaco-container" class="window-content monaco-instance"></div>
               </div>

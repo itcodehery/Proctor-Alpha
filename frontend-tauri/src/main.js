@@ -28,8 +28,12 @@ self.MonacoEnvironment = {
 };
 
 let monacoEditor = null;
-const openFiles = new Map(); // fileName -> { model, state }
+const openFiles = new Map(); // fileName -> { model, state, originalContent }
 let activeFileName = null;
+const unsavedFiles = new Set();
+let autoSaveEnabled = false;
+let typingTimer = null;
+const TYPING_TIMEOUT = 5000; // 5 seconds
 
 function initMonaco() {
     monacoEditor = monaco.editor.create(document.getElementById('monaco-container'), {
@@ -58,11 +62,15 @@ function initMonaco() {
     });
     monaco.editor.setTheme('proctor-theme');
 
-    // Auto-save on change
+    // Track changes for unsaved state & Auto-save
     monacoEditor.onDidChangeModelContent(() => {
         if (activeFileName) {
-            const content = monacoEditor.getValue();
-            invoke('write_file', { name: activeFileName, content });
+            handleTyping();
+
+            if (!unsavedFiles.has(activeFileName)) {
+                unsavedFiles.add(activeFileName);
+                updateTabState(activeFileName, true);
+            }
         }
     });
 }
@@ -104,7 +112,7 @@ async function openFile(name) {
             language = langMap[extension] || 'plaintext';
 
             const model = monaco.editor.createModel(content, language);
-            openFiles.set(name, { model });
+            openFiles.set(name, { model, originalContent: content }); // Store original content if needed for diff checks later
             addTab(name);
         } catch (e) {
             console.error('Failed to read file:', e);
@@ -120,6 +128,8 @@ async function openFile(name) {
     document.querySelectorAll('.file-item').forEach(el => {
         el.classList.toggle('active', el.innerText.includes(name));
     });
+
+    // Update active tab styling
     document.querySelectorAll('.tab').forEach(el => {
         el.classList.toggle('active', el.dataset.name === name);
     });
@@ -132,8 +142,14 @@ function addTab(name) {
     const tab = document.createElement('div');
     tab.className = 'tab';
     tab.dataset.name = name;
+
+    // Check if previously unsaved
+    if (unsavedFiles.has(name)) {
+        tab.classList.add('unsaved');
+    }
+
     tab.innerHTML = `
-        <span>${name}</span>
+        <span class="tab-name">${name}</span>
         <span class="tab-close">✕</span>
     `;
 
@@ -146,7 +162,102 @@ function addTab(name) {
     tabBar.appendChild(tab);
 }
 
+function updateTabState(name, isUnsaved) {
+    const tab = document.querySelector(`.tab[data-name="${name}"]`);
+    if (tab) {
+        if (isUnsaved) {
+            tab.classList.add('unsaved');
+        } else {
+            tab.classList.remove('unsaved');
+        }
+    }
+}
+
+// --- Auto-Save Logic ---
+const saveStatusEl = document.getElementById('save-status');
+const autoSaveToggleBtn = document.getElementById('auto-save-toggle');
+
+function updateSaveStatus(status) {
+    saveStatusEl.innerText = status;
+}
+
+function handleTyping() {
+    updateSaveStatus("Typing...");
+
+    if (typingTimer) {
+        clearTimeout(typingTimer);
+    }
+
+    if (autoSaveEnabled) {
+        typingTimer = setTimeout(() => {
+            saveCurrentFile();
+            updateSaveStatus("Saved");
+        }, TYPING_TIMEOUT);
+    } else {
+        updateSaveStatus("Unsaved");
+    }
+}
+
+function toggleAutoSave() {
+    autoSaveEnabled = !autoSaveEnabled;
+    autoSaveToggleBtn.classList.toggle('enabled', autoSaveEnabled);
+
+    if (autoSaveEnabled) {
+        // If enabling and there are unsaved changes, start timer
+        if (activeFileName && unsavedFiles.has(activeFileName)) {
+            handleTyping();
+        } else {
+            updateSaveStatus("Ready");
+        }
+    } else {
+        if (typingTimer) {
+            clearTimeout(typingTimer);
+            typingTimer = null;
+        }
+        updateSaveStatus(unsavedFiles.has(activeFileName) ? "Unsaved" : "Ready");
+    }
+}
+
+async function saveCurrentFile() {
+    if (!activeFileName) return;
+
+    // Clear any pending auto-save timer to avoid double save
+    if (typingTimer) {
+        clearTimeout(typingTimer);
+        typingTimer = null;
+    }
+
+    const content = monacoEditor.getValue();
+    try {
+        await invoke('write_file', { name: activeFileName, content });
+
+        unsavedFiles.delete(activeFileName);
+        updateTabState(activeFileName, false);
+        updateSaveStatus("Saved");
+
+        // Visual feedback (optional)
+        const saveBtn = document.getElementById('save-file-btn');
+        const originalText = saveBtn.innerText;
+        saveBtn.innerText = "✓";
+        setTimeout(() => saveBtn.innerText = originalText, 1000);
+
+    } catch (e) {
+        console.error("Failed to save:", e);
+        updateSaveStatus("Error");
+        alert("Failed to save file: " + e);
+    }
+}
+
+autoSaveToggleBtn.onclick = toggleAutoSave;
+
 function closeFile(name) {
+    if (unsavedFiles.has(name)) {
+        if (!confirm(`File ${name} has unsaved changes. Close anyway?`)) {
+            return;
+        }
+        unsavedFiles.delete(name);
+    }
+
     if (openFiles.has(name)) {
         const fileData = openFiles.get(name);
         fileData.model.dispose();
@@ -168,6 +279,7 @@ function closeFile(name) {
 }
 
 document.getElementById('refresh-files-btn').onclick = () => refreshFileList();
+document.getElementById('save-file-btn').onclick = () => saveCurrentFile();
 
 // --- New File Modal Logic ---
 const newFileDialog = document.getElementById('new-file-dialog');
@@ -286,6 +398,13 @@ refreshFileList();
 
 // --- Global Shortcut Listener ---
 window.addEventListener('keydown', (e) => {
+    // Save: Ctrl + S or Cmd + S
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveCurrentFile();
+        return;
+    }
+
     if (e.altKey && e.shiftKey && e.code === 'KeyS') {
         e.preventDefault();
         if (document.activeElement.closest('.monaco-instance')) {
