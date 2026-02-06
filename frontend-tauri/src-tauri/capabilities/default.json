@@ -7,6 +7,18 @@
   ],
   "permissions": [
     "core:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "go",
+          "args": [
+            "run",
+            "."
+          ]
+        }
+      ]
+    },
     "opener:default",
     "core:window:allow-close",
     "core:window:allow-minimize",

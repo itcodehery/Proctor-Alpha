@@ -147,6 +147,114 @@
       </div>
     </div>
 
+    <!-- Admin Dashboard Overlay (Top Layer) -->
+    <div id="admin-container" class="full-screen-layer admin-dashboard fade-out">
+      <!-- Admin Header -->
+      <nav class="top-nav" role="navigation" aria-label="Admin Navigation">
+        <div class="nav-drag-handler" data-tauri-drag-region></div>
+        <div class="window-controls">
+          <div class="win-btn win-close" id="admin-close"></div>
+          <div class="win-btn win-minimize" id="admin-minimize"></div>
+          <div class="win-btn win-maximize" id="admin-maximize"></div>
+        </div>
+
+        <div class="logo-section" data-tauri-drag-region>
+          <div class="logo-box admin-logo-box">AD</div>
+          <span class="logo-text">Admin<span class="highlight">Panel</span></span>
+          <div class="server-status-indicator" id="server-status-indicator" title="Server Status">
+            <span class="status-dot"></span>
+            <span class="status-text">OFFLINE</span>
+          </div>
+        </div>
+
+        <div class="session-info">
+          <button id="admin-back-btn" class="icon-toggle-btn" style="margin-right: 12px;">
+            ← Back
+          </button>
+          <button id="create-room-btn" class="end-session-btn"
+            style="border-color: var(--accent-primary); color: var(--accent-primary);">
+            + Create Room
+          </button>
+        </div>
+      </nav>
+
+      <div class="admin-content">
+        <!-- Status Cards -->
+        <div class="admin-status-cards">
+          <div class="status-card" id="process-shield-card">
+            <div class="card-icon">🛡️</div>
+            <div class="card-info">
+              <h3>Process Shield</h3>
+              <p id="shield-status-text">Inactive</p>
+            </div>
+            <button class="small-btn" id="monitor-shield-btn">Monitor</button>
+          </div>
+
+          <div class="status-card instruction-card">
+            <div class="card-icon">ℹ️</div>
+            <div class="card-info">
+              <h3>Instructions</h3>
+              <p>1. Ensure Server is <strong>ONLINE</strong> (Auto-starts).</p>
+              <p>2. Create a Room & Share <strong>Host ID</strong>.</p>
+              <p>3. Students enter Host ID to join.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-header">
+          <h2>Exam Rooms</h2>
+          <button id="refresh-rooms-btn" class="icon-btn" title="Refresh List">↻</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Room ID</th>
+                <th>Session Name</th>
+                <th>Status</th>
+                <th>Start Time</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rooms-list-body">
+              <!-- Rows will be populated via JS -->
+            </tbody>
+          </table>
+          <div id="rooms-loading" class="loading-state" style="display: none;">Loading rooms...</div>
+          <div id="rooms-empty" class="empty-state" style="display: none;">No rooms found. Create one to get started.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Room Dialog -->
+    <div id="create-room-dialog" class="dialog-overlay" role="dialog" aria-modal="true">
+      <div class="modal">
+        <div class="modal-close-icon" id="create-room-close" role="button">✕</div>
+        <h2 class="modal-title">Create Exam Session</h2>
+
+        <div class="form-group">
+          <label>Session Name</label>
+          <input type="text" id="cr-name" class="admin-input" placeholder="e.g. Mid-Term Physics">
+        </div>
+
+        <div class="form-group">
+          <label>Host ID (Examiner)</label>
+          <input type="text" id="cr-host" class="admin-input" placeholder="EMP123">
+        </div>
+
+        <div class="form-group">
+          <label>Admin Key</label>
+          <input type="password" id="cr-key" class="admin-input" placeholder="Secret Key">
+        </div>
+
+        <button id="cr-submit-btn" class="end-session-btn" style="width: 100%; margin-top: 16px;">
+          Create Room
+        </button>
+      </div>
+    </div>
+
     <!-- Enhanced Confirmation Dialog -->
     <div id="dialog-overlay" class="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal">

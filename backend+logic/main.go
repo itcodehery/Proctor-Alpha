@@ -86,6 +86,7 @@ func main() {
 	http.HandleFunc("/start-exam", StartExamHandler)
 	http.HandleFunc("/admin/update-status", AdminUpdateUserHandler)
 	http.HandleFunc("/get-room", GetRoomHandler)
+	http.HandleFunc("/get-all-rooms", GetAllRoomsHandler)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		enableCors(&w)

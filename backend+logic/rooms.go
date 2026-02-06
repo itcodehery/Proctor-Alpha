@@ -109,7 +109,7 @@ func StartExamHandler(w http.ResponseWriter, r *http.Request) {
 
 	room.ActiveStatus = Active
 	room.StartTime = time.Now()
-	// If TimeAllocated is 0, assume infinite or manual stop? 
+	// If TimeAllocated is 0, assume infinite or manual stop?
 	// Let's just calculate EndTime if TimeAllocated > 0
 	if room.TimeAllocated > 0 {
 		room.EndTime = room.StartTime.Add(room.TimeAllocated)
@@ -295,4 +295,23 @@ func GetRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(room)
+}
+
+// GetAllRoomsHandler returns a list of all current rooms (active or waiting)
+func GetAllRoomsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	roomList := make([]*Room, 0, len(rooms))
+	for _, room := range rooms {
+		roomList = append(roomList, room)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(roomList)
 }

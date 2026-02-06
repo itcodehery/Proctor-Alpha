@@ -128,6 +128,7 @@ fn create_file(name: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
             let mut ptys = HashMap::new();
