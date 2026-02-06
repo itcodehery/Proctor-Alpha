@@ -929,7 +929,7 @@ async function fetchRooms() {
             else statusBadge = '<span class="status-badge">Finished</span>';
 
             tr.innerHTML = `
-                <td class="mono">${r.host_id}</td>
+                <td class="mono" style="font-weight: 700; color: var(--accent-primary);">${r.id}</td>
                 <td>${r.session_name}</td>
                 <td>${statusBadge}</td>
                 <td>${startTime}</td>
@@ -1315,7 +1315,7 @@ function updateRoomDetailsUI(room) {
     if (!room) return;
 
     // Update Header
-    document.getElementById('rd-title').innerText = room.session_name;
+    document.getElementById('rd-title').innerHTML = `${room.session_name} <span style="font-family:monospace; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:8px;">${room.id}</span>`;
     const badge = document.getElementById('rd-status-badge');
     updateBadge(badge, room.active_status);
 

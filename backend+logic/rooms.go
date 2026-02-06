@@ -8,8 +8,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // StatusEnum defines the current state of the Exam Room
@@ -81,6 +79,17 @@ func generateID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func generateShortRoomID() string {
+	b := make([]byte, 6)
+	rand.Read(b)
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
 }
 
 // File path for persistence
@@ -207,7 +216,18 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roomID := uuid.New().String() // Using uuid for room ID
+	// Generate a Short ID (6 chars)
+	var roomID string
+	for {
+		roomID = generateShortRoomID()
+		mu.Lock()
+		_, exists := rooms[roomID]
+		mu.Unlock()
+		if !exists {
+			break
+		}
+	}
+
 	newRoom := &Room{
 		ID:           roomID,
 		SessionName:  req.SessionName,
