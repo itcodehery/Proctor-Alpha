@@ -111,7 +111,8 @@ body {
 
 /* Re-enable pointer events for actual buttons */
 .win-btn,
-.end-session-btn {
+.end-session-btn,
+.icon-toggle-btn {
   pointer-events: auto;
 }
 
@@ -802,7 +803,8 @@ body {
   width: 100%;
   height: 100%;
   background: var(--bg-app);
-  z-index: 40;
+  z-index: 200;
+  /* Ensure above top-nav (z-index 100) */
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
   display: flex;
@@ -895,6 +897,36 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.set-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.set-row input {
+  flex: 1;
+}
+
+.remove-set-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-set-btn:hover {
+  background: #ef4444;
+  color: white;
 }
 
 .hint-text {

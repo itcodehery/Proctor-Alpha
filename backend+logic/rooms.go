@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // StatusEnum defines the current state of the Exam Room
@@ -66,6 +69,53 @@ func generateID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
 	return fmt.Sprintf("%x", b)
+}
+
+// File path for persistence
+const dataFile = "rooms.json"
+
+func init() {
+	loadRooms()
+}
+
+func loadRooms() {
+	file, err := os.Open(dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		fmt.Println("Error reading rooms.json:", err)
+		return
+	}
+	defer file.Close()
+
+	var loaded map[string]*Room
+	if err := json.NewDecoder(file).Decode(&loaded); err != nil {
+		fmt.Println("Error decoding rooms.json:", err)
+		return
+	}
+
+	mu.Lock()
+	rooms = loaded
+	mu.Unlock()
+}
+
+func saveRooms() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	file, err := os.Create(dataFile)
+	if err != nil {
+		fmt.Println("Error saving rooms.json:", err)
+		return
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(rooms); err != nil {
+		fmt.Println("Error encoding rooms.json:", err)
+	}
 }
 
 // StartExamHandler allows the admin to start the exam
@@ -134,25 +184,37 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req Room
+	var req struct {
+		SessionName string `json:"session_name"`
+		HostID      string `json:"host_id"`
+		AdminKey    string `json:"admin_key"`
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	req.ID = generateID()
-	req.Students = []UserSession{}
-	if req.ActiveStatus == 0 {
-		req.ActiveStatus = Waiting
+	roomID := uuid.New().String() // Using uuid for room ID
+	newRoom := &Room{
+		ID:           roomID,
+		SessionName:  req.SessionName,
+		HostID:       req.HostID,
+		AdminKey:     req.AdminKey,
+		ActiveStatus: Waiting, // Default status
+		Students:     []UserSession{},
+		Sets:         make(map[string]string),
 	}
 
 	mu.Lock()
-	rooms[req.ID] = &req
+	rooms[roomID] = newRoom
 	mu.Unlock()
+
+	saveRooms() // Persist the new room
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"room_id": req.ID,
+		"room_id": roomID,
 		"message": "Room created successfully",
 	})
 }
@@ -314,4 +376,77 @@ func GetAllRoomsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(roomList)
+}
+
+// UpdateRoomHandler allows updating room details
+func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID        string            `json:"room_id"`
+		AdminKey      string            `json:"admin_key"`
+		SessionName   *string           `json:"session_name"`
+		Sets          map[string]string `json:"sets"`
+		TimeAllocated *time.Duration    `json:"time_allocated"`
+		ActiveStatus  *StatusEnum       `json:"active_status"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	if room.AdminKey != req.AdminKey {
+		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
+		return
+	}
+
+	// Update fields if provided
+	if req.SessionName != nil {
+		room.SessionName = *req.SessionName
+	}
+	if req.Sets != nil {
+		room.Sets = req.Sets
+	}
+	if req.TimeAllocated != nil {
+		room.TimeAllocated = *req.TimeAllocated
+		// Recalculate end time if active?
+		if room.ActiveStatus == Active {
+			room.EndTime = room.StartTime.Add(room.TimeAllocated)
+		}
+	}
+	if req.ActiveStatus != nil {
+		// Logic changes based on status?
+		if *req.ActiveStatus == Active && room.ActiveStatus == Waiting {
+			room.StartTime = time.Now()
+			if room.TimeAllocated > 0 {
+				room.EndTime = room.StartTime.Add(room.TimeAllocated)
+			}
+		}
+		room.ActiveStatus = *req.ActiveStatus
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Room updated successfully",
+	})
+
+	// Save state
+	go saveRooms()
 }

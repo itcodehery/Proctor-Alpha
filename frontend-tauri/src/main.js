@@ -969,8 +969,15 @@ async function fetchRoomDetails() {
             document.getElementById('rd-status-select').value = room.active_status;
 
             // Update Sets
-            if (room.sets) {
-                document.getElementById('rd-sets-json').value = JSON.stringify(room.sets, null, 2);
+            const container = document.getElementById('sets-container');
+            container.innerHTML = '';
+            if (room.sets && Object.keys(room.sets).length > 0) {
+                for (const [key, val] of Object.entries(room.sets)) {
+                    addSetRow(key, val);
+                }
+            } else {
+                // Add one empty row by default if empty
+                addSetRow();
             }
         }
 
@@ -1003,6 +1010,21 @@ async function fetchRoomDetails() {
     }
 }
 
+function addSetRow(name = '', url = '') {
+    const container = document.getElementById('sets-container');
+    const div = document.createElement('div');
+    div.className = 'set-row';
+    div.innerHTML = `
+        <input type="text" class="admin-input set-name" placeholder="Set Name (e.g. Set A)" value="${name}">
+        <input type="text" class="admin-input set-url" placeholder="Questions URL" value="${url}">
+        <div class="remove-set-btn" title="Remove">✕</div>
+    `;
+    div.querySelector('.remove-set-btn').onclick = () => div.remove();
+    container.appendChild(div);
+}
+
+document.getElementById('add-set-btn').addEventListener('click', () => addSetRow());
+
 // Save Changes
 document.getElementById('rd-save-btn').addEventListener('click', async () => {
     if (!currentRoomId) return;
@@ -1010,14 +1032,19 @@ document.getElementById('rd-save-btn').addEventListener('click', async () => {
     const durationMins = parseInt(document.getElementById('rd-duration').value);
     const status = parseInt(document.getElementById('rd-status-select').value);
     const key = document.getElementById('rd-key').value;
-    let sets = null;
 
-    try {
-        const setVal = document.getElementById('rd-sets-json').value;
-        if (setVal) sets = JSON.parse(setVal);
-    } catch (e) {
-        alert("Invalid JSON for Sets");
-        return;
+    // Collect Sets
+    const sets = {};
+    document.querySelectorAll('.set-row').forEach(row => {
+        const setName = row.querySelector('.set-name').value.trim();
+        const setUrl = row.querySelector('.set-url').value.trim();
+        if (setName && setUrl) {
+            sets[setName] = setUrl;
+        }
+    });
+
+    if (Object.keys(sets).length === 0) {
+        // Optional warning or just null
     }
 
     if (!key) {

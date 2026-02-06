@@ -288,9 +288,11 @@
 
         <div class="tab-content" id="tab-sets" style="display: none;">
           <div class="sets-editor">
-            <textarea id="rd-sets-json" class="admin-input" style="height: 300px; font-family: monospace;"
-              placeholder='{"SetA": "https://...", "SetB": "https://..."}'></textarea>
-            <p class="hint-text">Enter JSON format: {"Set Name": "URL"}</p>
+            <div id="sets-container">
+              <!-- Dynamic Rows -->
+            </div>
+            <button id="add-set-btn" class="small-btn" style="align-self: flex-start; margin-top: 12px;">+ Add
+              Set</button>
           </div>
         </div>
       </div>
