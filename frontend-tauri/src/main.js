@@ -481,7 +481,11 @@ startTimer();
 // --- Process Shield (Go Backend Integration) ---
 async function pollProcessShield() {
     try {
-        const response = await fetch('http://localhost:8080/scan');
+        // Process Shield Poll runs globally?
+        // If it runs on Student PC, it scans Local.
+        // If it runs on Admin PC, it scans Local.
+        // So always Local.
+        const response = await fetch(`${getAdminApiBase()}/scan`);
         if (!response.ok) return;
         const data = await response.json();
 
@@ -656,8 +660,48 @@ const serverStatusIndicator = document.getElementById('server-status-indicator')
 const monitorShieldBtn = document.getElementById('monitor-shield-btn');
 const shieldStatusText = document.getElementById('shield-status-text');
 
-const API_BASE = "http://localhost:8080";
-const WS_BASE = "ws://localhost:8080/ws";
+let isStudentSessionActive = false;
+
+
+const DEFAULT_IP = "localhost";
+const API_PORT = "8080";
+
+function getServerIp() {
+    return localStorage.getItem('server_ip') || DEFAULT_IP;
+}
+
+function saveServerIp(ip) {
+    if (ip) {
+        localStorage.setItem('server_ip', ip);
+    }
+}
+
+function getStudentApiBase() {
+    return `http://${getServerIp()}:${API_PORT}`;
+}
+
+function getAdminApiBase() {
+    return `http://localhost:${API_PORT}`;
+}
+
+function getStudentWsBase() {
+    return `ws://${getServerIp()}:${API_PORT}/ws`;
+}
+
+function getAdminWsBase() {
+    return `ws://localhost:${API_PORT}/ws`;
+}
+
+// Helper to decide which base to use based on context or just use specific ones
+// For simplicity, we will replace usages with specific functions.
+// But some shared functions (like checkBackendHealth) might need context.
+// Actually checkBackendHealth is used by Admin mostly? 
+// Wait, Student also checks health? 
+// checkBackendHealth is used in `startBackend` which attempts to start local backend.
+// So checkBackendHealth should use LOCALHOST always.
+
+// const API_BASE = "http://localhost:8080"; // Deprecated
+// const WS_BASE = "ws://localhost:8080/ws"; // Deprecated
 let ws = null;
 let wsRetries = 0;
 const { Command } = window.__TAURI__.shell; // Access shell plugin
@@ -665,7 +709,7 @@ const { Command } = window.__TAURI__.shell; // Access shell plugin
 // Backend Management
 async function checkBackendHealth() {
     try {
-        const res = await fetch(`${API_BASE}/scan`, { method: 'OPTIONS' }); // Lightweight check
+        const res = await fetch(`${getAdminApiBase()}/scan`, { method: 'OPTIONS' }); // Lightweight check
         if (res.ok) {
             updateServerStatus(true);
             return true;
@@ -737,7 +781,13 @@ const joinSubmitBtn = document.getElementById('join-submit-btn');
 const joinNameInput = document.getElementById('join-name');
 const joinRegNoInput = document.getElementById('join-regno');
 const joinRoomIdInput = document.getElementById('join-room-id');
+const joinServerIpInput = document.getElementById('join-server-ip');
 const joinError = document.getElementById('join-error');
+
+// Initialize Server IP input
+if (joinServerIpInput) {
+    joinServerIpInput.value = getServerIp();
+}
 
 if (btnStudent) {
     btnStudent.addEventListener('click', () => {
@@ -774,19 +824,27 @@ async function handleJoinRoom() {
     const regNo = joinRegNoInput.value.trim();
     const roomId = joinRoomIdInput.value.trim();
 
+    const serverIp = joinServerIpInput ? joinServerIpInput.value.trim() : getServerIp();
+
     if (!name || !regNo || !roomId) {
         showJoinError("Please fill in all fields.");
         return;
     }
+
+    // Save the IP for future use
+    if (serverIp) {
+        saveServerIp(serverIp);
+    }
+
     joinSubmitBtn.innerText = "Joining...";
     joinSubmitBtn.disabled = true;
     joinError.style.display = 'none';
 
     console.log(`[DEBUG] Attempting to join room: ${roomId} as ${name} (${regNo})`);
-    console.log(`[DEBUG] API URL: ${API_BASE}/join-room`);
+    console.log(`[DEBUG] API URL: ${getStudentApiBase()}/join-room`);
 
     try {
-        const res = await fetch(`${API_BASE}/join-room`, {
+        const res = await fetch(`${getStudentApiBase()}/join-room`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -804,6 +862,8 @@ async function handleJoinRoom() {
         if (res.ok) {
             // Success!
             // console.log("Joined!", data);
+
+            isStudentSessionActive = true;
 
             // Navigate to IDE
             joinContainer.classList.add('fade-out');
@@ -874,7 +934,8 @@ if (monitorShieldBtn) {
         shieldStatusText.innerText = "Scanning processes...";
 
         try {
-            const res = await fetch(`${API_BASE}/scan`);
+            // Process Shield runs LOCALLY on the machine
+            const res = await fetch(`${getAdminApiBase()}/scan`);
             const data = await res.json();
 
             if (data.forbidden_found) {
@@ -904,7 +965,7 @@ async function fetchRooms() {
     empty.style.display = 'none';
 
     try {
-        const res = await fetch(`${API_BASE}/get-all-rooms`);
+        const res = await fetch(`${getAdminApiBase()}/get-all-rooms`);
         const rooms = await res.json();
 
         loading.style.display = 'none';
@@ -976,7 +1037,7 @@ if (crSubmitBtn) {
         }
 
         try {
-            const res = await fetch(`${API_BASE}/create-room`, {
+            const res = await fetch(`${getAdminApiBase()}/create-room`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1171,7 +1232,7 @@ document.getElementById('rd-save-btn').addEventListener('click', async () => {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/update-room`, {
+        const res = await fetch(`${getAdminApiBase()}/update-room`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1222,7 +1283,7 @@ window.moderateStudent = async (userId, status) => {
     if (!key) return;
 
     try {
-        await fetch(`${API_BASE}/admin/update-status`, {
+        await fetch(`${getAdminApiBase()}/admin/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1252,7 +1313,20 @@ function bindRoomListEvents() {
 function initWebSocket() {
     if (ws) return; // Already initialized
 
-    ws = new WebSocket(WS_BASE);
+    // WebSocket for Admin should connect to Localhost
+    // But wait, if we are in Student View, we might need WS to remote.
+    // initWebSocket is called by Admin Panel (line 889).
+    // It is NOT called by Student Join explicitly?
+    // openRoomDetails calls `ws.send`.
+    // Student flow: handleJoinRoom -> Success -> ... wait, Student doesn't init WS?
+    // Student notifications logic is missing in `handleJoinRoom`?
+    // Ah, `handleJoinRoom` just posts. Realtime updates for student?
+    // The Student Portal in this code seems to be `handleJoinRoom` which just sends a POST.
+    // Does the student see a waiting room?
+    // The code mainly focuses on Admin Panel.
+    // If Student Portal needs WS, it should be initialized with StudentBase.
+    // Current `initWebSocket` is called only in Admin interactions.
+    ws = new WebSocket(getAdminWsBase());
 
     ws.onopen = () => {
         console.log("WS Connected");
@@ -1349,7 +1423,7 @@ const originalFetchDetails = fetchRoomDetails;
 fetchRoomDetails = async () => {
     if (!currentRoomId) return;
     try {
-        const res = await fetch(`${API_BASE}/get-room?room_id=${currentRoomId}`);
+        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
         if (!res.ok) return;
         const room = await res.json();
 
@@ -1375,3 +1449,10 @@ fetchRoomDetails = async () => {
         console.error(e);
     }
 };
+
+// --- Activity Monitor: Tab Switch Tracking ---
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && isStudentSessionActive) {
+        addLogEntry('alert', '⚠️ Tab switch detected! Please return to the exam.');
+    }
+});
