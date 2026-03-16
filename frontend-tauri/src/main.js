@@ -527,7 +527,7 @@ async function pollProcessShield() {
   if (!isStudentSessionActive) return; // Only scan during student exam session
 
   try {
-    const response = await fetch(`${getAdminApiBase()}/scan?room_id=${currentRoomId}`);
+    const response = await fetch(`${getStudentApiBase()}/scan?room_id=${currentRoomId}`);
     if (!response.ok) return;
     const data = await response.json();
 
@@ -553,7 +553,7 @@ async function syncStudentCode() {
     }
 
     try {
-        await fetch(`${getAdminApiBase()}/sync-code`, {
+        await fetch(`${getStudentApiBase()}/sync-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -572,7 +572,7 @@ async function captureAndSendSnapshot() {
     if (!isStudentSessionActive) return;
     try {
         const snapshot = await invoke('capture_screenshot');
-        await fetch(`${getAdminApiBase()}/student/snapshot`, {
+        await fetch(`${getStudentApiBase()}/student/snapshot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -949,6 +949,7 @@ async function handleJoinRoom() {
       // console.log("Joined!", data);
 
       isStudentSessionActive = true;
+      currentRoomId = roomId; // Set global room ID for sync tasks
 
       // Navigate to IDE
       joinContainer.classList.add('fade-out');
@@ -1656,7 +1657,7 @@ function updateLiveViewUI(student) {
 async function logActivity(message) {
     if (!isStudentSessionActive || !currentRoomId) return;
     try {
-        await fetch(`${getAdminApiBase()}/log-activity`, {
+        await fetch(`${getStudentApiBase()}/log-activity`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1675,7 +1676,7 @@ const handleFlagEvent = async (reason) => {
     logActivity(`⚠️ FLAG: ${reason}`);
     
     try {
-        await fetch(`${getAdminApiBase()}/admin/update-status`, {
+        await fetch(`${getStudentApiBase()}/admin/update-status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1882,7 +1883,7 @@ async function pollTimer() {
     if (!isStudentSessionActive || !currentRoomId || hasSubmitted) return;
 
     try {
-        const res = await fetch(`${getAdminApiBase()}/timer-info?room_id=${currentRoomId}`);
+        const res = await fetch(`${getStudentApiBase()}/timer-info?room_id=${currentRoomId}`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -1970,7 +1971,7 @@ async function submitWork() {
     }
 
     try {
-        const res = await fetch(`${getAdminApiBase()}/submit`, {
+        const res = await fetch(`${getStudentApiBase()}/submit`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
