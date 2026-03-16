@@ -1,0 +1,571 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{tocloft}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{setspace}
+\usepackage{ulem}
+
+% --- Custom Table Setup ---
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+\renewcommand{\arraystretch}{1.5}
+
+% --- Go Code Aesthetics ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{gostyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\small,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=10pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    language=Go,
+    frame=single,
+    rulecolor=\color{lightgray}
+}
+
+\lstset{style=gostyle}
+
+\begin{document}
+\onehalfspacing
+
+% --- TITLE PAGE (Matching Image 1) ---
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+    
+    % Boxed Logo Area
+    \begin{center}
+        \fbox{\begin{minipage}{0.8\textwidth}
+            \centering
+            \vspace{0.2cm}
+            \includegraphics[width=0.95\textwidth]{example-image} \\ % Replace with actual logo
+            \vspace{0.2cm}
+        \end{minipage}}
+    \end{center}
+
+    \vspace{2cm}
+    {\Huge \textbf{GO Programming Language Lab Record}} \\
+    
+    \vspace{3cm}
+    {\Large Name of the Student (Register No)} \\
+    \vspace{1cm}
+    {\Large \rule{8cm}{0.4pt}} % Line for manual entry
+    
+    \vspace{3cm}
+    {\large A Lab record submitted in partial fulfillment of the requirements of \\
+    III Trimester Master of Computer Applications of CHRIST (Deemed to be University)} \\
+
+    \vfill
+    {\Large March - 2026}
+    \vspace{1cm}
+\end{titlepage}
+
+% --- CERTIFICATE (Matching Image 2) ---
+\newpage
+\begin{center}
+    \fbox{\begin{minipage}{0.8\textwidth}
+        \centering
+        \vspace{0.2cm}
+        \includegraphics[width=0.95\textwidth]{example-image} \\
+        \vspace{0.2cm}
+    \end{minipage}}
+\end{center}
+
+\vspace{2cm}
+\begin{center}
+    {\Huge \textbf{\underline{CERTIFICATE}}}
+\end{center}
+
+\vspace{1.5cm}
+\begin{center}
+    \begin{minipage}{0.9\textwidth}
+        \large \textit{This is certified to be the bona fide record of practical work done by \textbf{Student Name (Reg Number)}, 3 MCA (Section) of Christ University, Bangalore, for GO Programming Language Lab in partial fulfillment of the requirements of III Trimester MCA during the year 2026.}
+    \end{minipage}
+\end{center}
+
+\vspace{4cm}
+\noindent
+\textbf{Head of the Department} \hfill \textbf{Lab in-charge}
+
+\vspace{3cm}
+\noindent
+\textbf{Valued-by:} \\
+\begin{tabular}{|p{1cm}|p{6cm}|p{6cm}|}
+\hline
+ & Name & : \\ \hline
+1. & Register Number & : \\ \hline
+ & Examination Centre & : Christ University \\ \hline
+2. & Date of Exam & : \\ \hline
+\end{tabular}
+
+% --- TABLE OF CONTENTS (Matching Image 3) ---
+\newpage
+\begin{center}
+    {\Huge \textbf{TABLE OF CONTENTS}}
+\end{center}
+\vspace{1cm}
+
+\begin{longtable}{|c|p{10cm}|c|}
+\hline
+\textbf{Sl No} & \centering \textbf{Question} & \textbf{Page No.} \\ \hline
+\textbf{I} & Challenge Exploration and Design Intend Description & \\ \hline
+\textbf{1} & Implement the concept of Variables, values and type. & \\ \hline
+\textbf{2} & Implement the concept of control flow. & \\ \hline
+\textbf{3} & Implement the concept of Array and Slice. & \\ \hline
+\textbf{4} & Implement the concept of Map and Structs. & \\ \hline
+\textbf{5} & Implement the concept of functions and error handling & \\ \hline
+\textbf{6} & Implement the concept of interface & \\ \hline
+\textbf{7} & Implement the concept of Pointers, call by value and call by function. & \\ \hline
+\textbf{8} & Implement the concept of JSON marshal and unmarshal. Write its unit test case. & \\ \hline
+\textbf{9} & Implement the concept of Concurrency. & \\ \hline
+\textbf{10} & Implement the concept of Variables, values and type. & \\ \hline
+\end{longtable}
+
+% --- CHALLENGE EXPLORATION (Expanded to 2-3 pages) ---
+\newpage
+\section{Challenge Exploration and Design Intend Description}
+
+\subsection{Introduction: The Proctoring Challenge}
+The digital transformation of education has brought significant advantages, but it has also introduced complex challenges regarding academic integrity during remote examinations. Traditional proctoring methods are often insufficient in a distributed environment where students can access external resources, unauthorized applications, and communication tools. The \textbf{Proctor-AlphaTest} system was conceived to bridge this gap by providing a lightweight, efficient, and robust monitoring solution.
+
+\subsection{Project Objectives and Design Intent}
+The primary goal of this project is to develop a background monitoring engine that can track system processes and provide real-time updates to an examiner (Admin). The design intent focuses on three pillars:
+\begin{enumerate}
+    \item \textbf{Efficiency:} The monitor must consume minimal system resources to avoid interfering with the student's examination performance.
+    \item \textbf{Real-time Visibility:} Any breach of protocol (e.g., opening a forbidden app) must be reported instantaneously.
+    \item \textbf{Scalability:} The system must handle multiple rooms and dozens of students per room simultaneously.
+\end{enumerate}
+
+\subsection{Why Go? (Choosing the Right Tool)}
+The selection of the \textbf{Go Programming Language (Golang)} was a strategic decision based on the following technical requirements:
+\begin{itemize}
+    \item \textbf{Concurrency Model:} Go's \textit{goroutines} and \textit{channels} provide the ideal abstraction for handling multiple WebSocket connections and concurrent process scanning without the overhead of heavy threads.
+    \item \textbf{Static Typing \& Performance:} Go offers the safety of a compiled language with performance levels comparable to C++, which is essential for low-level process inspection.
+    \item \textbf{Standard Library:} Go's built-in \texttt{net/http} and \texttt{encoding/json} packages allowed for rapid development of the REST API and the persistence layer.
+    \item \textbf{Simplicity:} The language's minimalist design ensures that the backend logic remains maintainable and less prone to side-effect bugs.
+\end{itemize}
+
+\subsection{Architectural Deep Dive}
+The system architecture follows a client-server-observer pattern. 
+\begin{itemize}
+    \item \textbf{The Hub (realtime.go):} Acts as the central nervous system, managing all active student connections and broadcasting state changes to the Admin interface.
+    \item \textbf{Room Management (rooms.go):} Handles the lifecycle of an exam set, student registration, and status tracking (Online, Flagged, Submitted).
+    \item \textbf{Process Shield (main.go):} Interfaces with the operating system using \texttt{os/exec} to fetch running processes and compare them against a blacklist of forbidden applications (e.g., Discord, Slack).
+\end{itemize}
+
+\subsection{Innovation in Monitoring}
+Unlike heavy proctoring suites, \textbf{Proctor-AlphaTest} uses a "Split API Base" approach. The Student client communicates with a local backend that performs the heavy lifting of process scanning, while the state is synchronized via WebSockets to a central room hub. This minimizes global network traffic and ensures that the core security logic is executed close to the OS source.
+
+% --- LAB SECTIONS (Expanded/Doubled Content) ---
+
+\newpage
+\section{Lab 1: Variables, Values and Type}
+\textbf{Question:} Implement the concept of Variables, values and type.
+
+\subsection{Theoretical Background}
+In the Proctor system, data integrity starts with Go's strong typing system. Every value in Go has a specific type that is determined at compile time. This prevents runtime errors that often plague dynamic languages. We use custom \texttt{struct} types to represent the result of a system scan, ensuring that the frontend receives data in a predictable format.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+package main
+import "fmt"
+
+// ScanResult groups variables for complex data passing
+type ScanResult struct {
+	ForbiddenFound bool     `json:"forbidden_found"`
+	Processes      []string `json:"processes"`
+}
+
+// Global variable definition with explicit typing
+var forbiddenApps = []string{"firefox", "discord", "slack", "spotify"}
+
+func main() {
+    // Variable declaration types
+    var serverPort int = 8081      // Explicit declaration
+    status := "Active"             // Short-hand inference
+    const maxRetries = 3           // Constant value
+
+    fmt.Printf("System: %s | Port: %d | Forbidden List: %v\n", status, serverPort, forbiddenApps)
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Mastered the use of \textit{Short Variable Declaration} (\texttt{:=}) for clean, readable code.
+    \item Learned to group related variables into a \textit{struct}, facilitating JSON serialization.
+    \item Understood the importance of \textit{Type Safety} in security-critical backend applications.
+\end{itemize}
+
+\newpage
+\section{Lab 2: Control Flow}
+\textbf{Question:} Implement the concept of control flow.
+
+\subsection{Theoretical Background}
+Control flow decides the execution path of the application. In the process monitor, we iterate through lists of applications and apply conditional logic to determine if a student has violated examination rules. Go's control flow is unique as it only features one looping construct: the \texttt{for} loop, which can act as a traditional C-style loop or a \texttt{while} loop.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+func scanSystem(rawOutput string) {
+    foundApps := []string{}
+    sanitized := strings.ToLower(rawOutput)
+
+    // Iterating over the blacklist (Range-based Loop)
+    for _, app := range forbiddenApps {
+        // Selection logic (Conditional Branching)
+        if strings.Contains(sanitized, app) {
+            foundApps = append(foundApps, app)
+        }
+    }
+
+    // Final decision based on scan
+    if len(foundApps) > 0 {
+        fmt.Printf("THREAT DETECTED: %v\n", foundApps)
+    } else {
+        fmt.Println("Status: System Secure")
+    }
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Implemented complex iteration logic using \texttt{range} for slice traversal.
+    \item Practiced \textit{Branching Logic} to handle security alerts in the Proctor engine.
+    \item Learned to manage logical flow in a way that minimizes cognitive load and performance overhead.
+\end{itemize}
+
+\newpage
+\section{Lab 3: Array and Slice}
+\textbf{Question:} Implement the concept of Array and Slice.
+
+\subsection{Theoretical Background}
+Go distinguishes between fixed-size \textit{Arrays} and dynamic \textit{Slices}. Slices are far more common in Go because they are abstractions built on top of arrays that provide much greater flexibility. In our project, student cohorts and forbidden application lists are stored as slices, allowing the system to grow dynamically as users join rooms.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+package main
+import "fmt"
+
+func main() {
+    // Array: Fixed length, rarely used in general logic
+    var fixedNodes [3]string = [3]string{"Node1", "Node2", "Node3"}
+
+    // Slice: Dynamic length, backed by an array
+    students := []string{"Student A", "Student B"}
+    
+    // Growth: Append increases slice capacity
+    students = append(students, "Student C")
+
+    fmt.Println("Core Nodes (Array):", fixedNodes)
+    fmt.Println("Active Session (Slice):", students)
+    fmt.Printf("Slice Props - Length: %d, Capacity: %d\n", len(students), cap(students))
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Understood the internal mechanics of how slices reference underlying arrays.
+    \item Effectively used the \texttt{append} function to manage dynamic student lists.
+    \item Learned the performance implications of slice \textit{Capacity} vs \textit{Length}.
+\end{itemize}
+
+\newpage
+\section{Lab 4: Map and Structs}
+\textbf{Question:} Implement the concept of Map and Structs.
+
+\subsection{Theoretical Background}
+Maps provide efficient key-value association, which we use to manage "Exam Rooms" where the Room ID is the key and the Room state is the value. Structs allow us to bundle related data together into a single entity. Together, these constructs form the backbone of the Proctor system's data management.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+type UserSession struct {
+	UserID       string      `json:"user_id"`
+	ActiveStatus int         `json:"active_status"`
+}
+
+var rooms = make(map[string]*Room)
+
+func createRoom(id string, name string) {
+    newRoom := Room{
+        ID: id,
+        SessionName: name,
+        Sets: make(map[string]string),
+    }
+    // Mapping ID to the struct for O(1) retrieval
+    rooms[id] = &newRoom
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Implemented an \textit{In-memory Database} pattern using Go Maps.
+    \item Grouped heterogeneous data into \textit{Structs} for high-level abstraction.
+    \item Mastered the use of \textit{Composite Literals} for efficient initialization.
+\end{itemize}
+
+\newpage
+\section{Lab 5: Functions and Error Handling}
+\textbf{Question:} Implement the concept of functions and error handling.
+
+\subsection{Theoretical Background}
+Go treats errors as values, encouraged by functions that can return multiple results. This approach eliminates the hidden control flow typical of exception-based languages. In our persistence layer, every file operation is checked explicitly, ensuring that the server never enters an undefined state.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+func loadRooms() error {
+	file, err := os.Open("rooms.json")
+    // Explicit Error Checking
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // Allowed: file created on first save
+		}
+		return fmt.Errorf("IO Error: %v", err)
+	}
+	defer file.Close() // Cleanup regardless of later errors
+    
+    // Decoding Logic here...
+    return nil
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Learned to write \textit{Multi-value Return} functions for idiomatic error handling.
+    \item Understand the execution timing of the \texttt{defer} keyword for resource cleanup.
+    \item Practiced \textit{Error Wrapping} to provide descriptive context in backend logs.
+\end{itemize}
+
+\newpage
+\section{Lab 6: Interface}
+\textbf{Question:} Implement the concept of interface.
+
+\subsection{Theoretical Background}
+Interfaces define a set of methods that a type must implement. Go's interfaces are \textit{satisfactory}: if a type has all the methods, it implements the interface without needing an "implements" keyword. We use this to define \textit{Broadcasters}, allowing us to swap the Hub implementation easily for testing.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+// Defining the contract
+type NotifyService interface {
+    Broadcast(msg string)
+}
+
+// Hub satisfies the contract
+func (h *Hub) Broadcast(msg string) {
+    h.broadcast <- Message{Payload: msg}
+}
+
+// Any system component can now use the interface
+func AlertAdmin(n NotifyService, event string) {
+    n.Broadcast("Alert: " + event)
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Designed an \textit{Abstraction Layer} to decouple system components.
+    \item Understood the power of \textit{Implicit Interface Satisfaction}.
+    \item Learned to write code that depends on behaviors (\textit{Interfaces}) rather than specific data types (\textit{Structs}).
+\end{itemize}
+
+\newpage
+\section{Lab 7: Pointers and Memory Management}
+\textbf{Question:} Implement the concept of Pointers, call by value and call by function.
+
+\subsection{Theoretical Background}
+Pointers allow us to pass references to memory rather than copying the entire data value. In the Proctor system, where the \texttt{Hub} or \texttt{Room} structs can be quite large, passing by pointer is essential for performance. It also allows functions to modify the original object's state across function boundaries.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+// Pointer receiver modifies the Hub itself
+func (h *Hub) register(c *Client) {
+    h.mu.Lock()
+    defer h.mu.Unlock()
+    h.clients[c] = true
+}
+
+func main() {
+    h := newHub()
+    // Passing the address (&) to the function
+    h.register(&Client{})
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Distinguished between \textit{Pass-by-Value} and \textit{Pass-by-Reference}.
+    \item Effectively used \textit{Pointer Receivers} for struct method implementation.
+    \item Gained an intuitive understanding of the \textit{Memory Address} and \textit{Dereferencing} concepts.
+\end{itemize}
+
+\newpage
+\section{Lab 8: JSON Marshal and Unmarshal}
+\textbf{Question:} Implement the concept of JSON marshal and unmarshal. Write its unit test case.
+
+\subsection{Theoretical Background}
+JSON is the lingua franca of web communication. Go provides the \texttt{encoding/json} package which handles the conversion between Go structs and JSON strings. We use "struct tags" to map Go fields to specific JSON keys expected by our JavaScript frontend.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+// Mapping Go fields to JSON keys
+type Message struct {
+	Type    string `json:"type"`
+	Payload string `json:"payload"`
+}
+
+func TestMessageJSON(t *testing.T) {
+    msg := Message{Type: "ALERT", Payload: "Cheat detected"}
+    
+    // Marshal to bytes
+    encoded, _ := json.Marshal(msg)
+    
+    // Unmarshal back to struct
+    var decoded Message
+    json.Unmarshal(encoded, &decoded)
+    
+    if decoded.Type != "ALERT" {
+        t.Errorf("JSON Mismatch")
+    }
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Used \textit{Reflect-based Tagging} for precise JSON mapping.
+    \item Wrote \textit{Unit Tests} to automate the verification of data serialization.
+    \item Learned to handle JSON data streams in high-throughput network handlers.
+\end{itemize}
+
+\newpage
+\section{Lab 9: Concurrency}
+\textbf{Question:} Implement the concept of Concurrency.
+
+\subsection{Theoretical Background}
+Concurrency is Go's "killer feature". Channels provide safe communication between goroutines, following the CSP (Communicating Sequential Processes) model. In the proctoring hub, one goroutine manages the main loop, while dozens of others concurrently handle individual student WebSocket pings.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+func (h *Hub) run() {
+	for {
+        // Select handles multiple channel operations
+		select {
+		case client := <-h.register:
+			h.clients[client] = true
+		case message := <-h.broadcast:
+			h.sendToAll(message)
+		}
+	}
+}
+
+func startServer() {
+    // Spawning a concurrent background process
+    go hub.run()
+    http.ListenAndServe(":8081", nil)
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Successfully utilized \textit{Goroutines} for non-blocking server execution.
+    \item Implemented safe synchronization using \textit{Channels} and the \texttt{select} block.
+    \item Learned to design \textit{Thread-safe} structures in a multi-user environment.
+\end{itemize}
+
+\newpage
+\section{Lab 10: Advanced Types and Constants}
+\textbf{Question:} Implement the concept of Variables, values and type.
+
+\subsection{Theoretical Background}
+Advanced typing in Go includes type aliasing and the use of the \texttt{iota} keyword for defining enumerated constants. This improves code clarity by replacing magic numbers with meaningful names (e.g., using \texttt{Flagged} instead of 3). This is crucial for tracking student status in the Proctor system.
+
+\subsection{Code Implementation}
+\begin{lstlisting}
+// Type Aliasing for domain-specific clarity
+type StatusEnum int
+
+const (
+    // iota auto-increments for each constant
+    Waiting StatusEnum = iota // 0
+    Active                   // 1
+    Flagged                  // 2
+    Submitted                // 3
+)
+
+func main() {
+    var studentStatus StatusEnum = Flagged
+    fmt.Printf("Current Status code: %d, Type: %T\n", studentStatus, studentStatus)
+}
+\end{lstlisting}
+
+\subsection{Learning Outcomes}
+\begin{itemize}
+    \item Used \textit{iota} for professional, scalable constant definitions.
+    \item Leveraged \textit{Type Aliasing} to improve the semantic meaning of the code.
+    \item Practiced advanced variable patterns to ensure the proctoring state is bug-free.
+\end{itemize}
+
+% --- CODE APPENDIX ---
+\newpage
+\section{Full Lab Code Reference}
+This section contains raw code blocks for easy retrieval.
+
+\subsection{Hub Implementation (realtime.go)}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+package main
+import ("encoding/json"; "log"; "net/http"; "time"; "github.com/gorilla/websocket")
+type Hub struct {
+	clients    map[*Client]bool
+	broadcast  chan Message
+	register   chan *Client
+	unregister chan *Client
+}
+func (h *Hub) run() {
+	for {
+		select {
+		case client := <-h.register: h.clients[client] = true
+		case client := <-h.unregister: if _, ok := h.clients[client]; ok { delete(h.clients, client); close(client.send)}
+		case message := <-h.broadcast: for client := range h.clients { client.send <- message }
+		}
+	}
+}
+\end{lstlisting}
+
+\subsection{Main Handler (main.go)}
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
+	cmd := exec.Command("ps", "-e")
+	output, err := cmd.Output()
+	if err != nil { http.Error(w, "Scan Failed", 500); return }
+	outStr := strings.ToLower(string(output))
+	found := []string{}
+	for _, app := range forbiddenApps { if strings.Contains(outStr, app) { found = append(found, app) } }
+	json.NewEncoder(w).Encode(ScanResult{ForbiddenFound: len(found) > 0, Processes: found})
+}
+\end{lstlisting}
+
+\end{document}
