@@ -460,23 +460,45 @@ Split(['#pane-editor', '#pane-terminal'], {
 // --- Live View Global State ---
 let liveViewEditor = null;
 let liveViewStudentId = null;
+let liveViewCurrentFile = null; // Which file the admin is viewing in live view
 
-function initLiveViewEditor() {
-    if (liveViewEditor) return;
-    liveViewEditor = monaco.editor.create(document.getElementById('lv-editor-container'), {
-        value: "// Waiting for student code...",
-        language: "javascript",
-        theme: "vs-dark",
-        readOnly: true,
-        automaticLayout: true,
-        fontSize: 12,
-        minimap: { enabled: false }
+function initLiveViewEditor(callback) {
+    if (liveViewEditor) {
+        liveViewEditor.layout(); // Force re-layout in case of dimension issues
+        if (callback) callback();
+        return;
+    }
+    // Delay creation until the overlay has rendered and has actual dimensions
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            const container = document.getElementById('lv-editor-container');
+            if (!container) {
+                console.error('lv-editor-container not found');
+                if (callback) callback();
+                return;
+            }
+            try {
+                liveViewEditor = monaco.editor.create(container, {
+                    value: "// Waiting for student code...",
+                    language: "javascript",
+                    theme: "vs-dark",
+                    readOnly: true,
+                    automaticLayout: true,
+                    fontSize: 12,
+                    minimap: { enabled: false }
+                });
+            } catch (e) {
+                console.error('Failed to create live view editor:', e);
+            }
+            if (callback) callback();
+        }, 100); // Wait for browser reflow
     });
 }
 
 document.getElementById('live-view-close').onclick = () => {
     document.getElementById('live-view-overlay').style.display = 'none';
     liveViewStudentId = null;
+    liveViewCurrentFile = null;
 };
 
 // --- Session Timer ---
@@ -1499,25 +1521,31 @@ fetchRoomDetails = async () => {
 };
 
 // Show/Update Live View Modal
-window.openLiveView = async (userId, name) => {
+window.openLiveView = (userId, name) => {
     liveViewStudentId = userId;
+    liveViewCurrentFile = null; // Reset file selection
     document.getElementById('lv-student-name').innerText = `Live View: ${name}`;
     document.getElementById('live-view-overlay').style.display = 'flex';
-    initLiveViewEditor();
-    
-    // Immediately fetch room data and find this student
-    try {
-        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
-        if (res.ok) {
-            const room = await res.json();
-            const student = (room.students || []).find(s => s.user_id === userId);
-            if (student) {
-                updateLiveViewUI(student);
-            }
-        }
-    } catch (e) {
-        console.error('Failed to fetch student for live view:', e);
-    }
+
+    // Initialize editor AFTER overlay is visible, then fetch data
+    initLiveViewEditor(() => {
+        // Fetch room data and populate live view
+        fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`)
+            .then(res => res.json())
+            .then(room => {
+                const student = (room.students || []).find(s => s.user_id === userId);
+                if (student) {
+                    updateLiveViewUI(student);
+                } else {
+                    console.warn('Student not found in room data:', userId);
+                    if (liveViewEditor) liveViewEditor.setValue('// Student data not found. Waiting for sync...');
+                }
+            })
+            .catch(e => {
+                console.error('Failed to fetch student for live view:', e);
+                if (liveViewEditor) liveViewEditor.setValue('// Error fetching student data.');
+            });
+    });
 };
 
 // Auto-refresh Live View every 5 seconds
@@ -1533,7 +1561,7 @@ setInterval(async () => {
     } catch (e) { /* silent */ }
 }, 5000);
 
-let liveViewCurrentFile = null; // Which file the admin is viewing in live view
+
 
 function updateLiveViewUI(student) {
     if (liveViewStudentId !== student.user_id) return;
