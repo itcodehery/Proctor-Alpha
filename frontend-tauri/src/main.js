@@ -1498,15 +1498,39 @@ fetchRoomDetails = async () => {
 };
 
 // Show/Update Live View Modal
-window.openLiveView = (userId, name) => {
+window.openLiveView = async (userId, name) => {
     liveViewStudentId = userId;
     document.getElementById('lv-student-name').innerText = `Live View: ${name}`;
     document.getElementById('live-view-overlay').style.display = 'flex';
     initLiveViewEditor();
     
-    // Initial fetch to populate if needed
-    fetchRoomDetails();
+    // Immediately fetch room data and find this student
+    try {
+        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
+        if (res.ok) {
+            const room = await res.json();
+            const student = (room.students || []).find(s => s.user_id === userId);
+            if (student) {
+                updateLiveViewUI(student);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to fetch student for live view:', e);
+    }
 };
+
+// Auto-refresh Live View every 5 seconds
+setInterval(async () => {
+    if (!liveViewStudentId || !currentRoomId) return;
+    try {
+        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
+        if (res.ok) {
+            const room = await res.json();
+            const student = (room.students || []).find(s => s.user_id === liveViewStudentId);
+            if (student) updateLiveViewUI(student);
+        }
+    } catch (e) { /* silent */ }
+}, 5000);
 
 function updateLiveViewUI(student) {
     if (liveViewStudentId !== student.user_id) return;
@@ -1592,24 +1616,39 @@ async function discoverRooms() {
     if (!listEl) return;
     listEl.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">Scanning LAN...</div>';
 
-    const subnets = ['192.168.1', '192.168.0', '10.0.0'];
     const found = [];
 
-    for (const subnet of subnets) {
-        const promises = [];
-        for (let i = 1; i <= 30; i++) {
-            const ip = `${subnet}.${i}`;
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 500);
-            promises.push(
-                fetch(`http://${ip}:8081/discover`, { signal: controller.signal })
-                    .then(r => r.json())
-                    .then(data => { clearTimeout(timeout); if (data.service === 'proctor-alpha') found.push(ip); })
-                    .catch(() => { clearTimeout(timeout); })
-            );
+    // 1. Check localhost first (same-machine testing)
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 800);
+        const res = await fetch('http://localhost:8081/discover', { signal: controller.signal });
+        clearTimeout(timeout);
+        const data = await res.json();
+        if (data.service === 'proctor-alpha') {
+            found.push(data.ip || 'localhost');
         }
-        await Promise.all(promises);
-        if (found.length > 0) break;
+    } catch (e) { /* localhost not running */ }
+
+    // 2. Scan common LAN subnets
+    if (found.length === 0) {
+        const subnets = ['192.168.1', '192.168.0', '10.0.0'];
+        for (const subnet of subnets) {
+            const promises = [];
+            for (let i = 1; i <= 30; i++) {
+                const ip = `${subnet}.${i}`;
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 500);
+                promises.push(
+                    fetch(`http://${ip}:8081/discover`, { signal: controller.signal })
+                        .then(r => r.json())
+                        .then(data => { clearTimeout(timeout); if (data.service === 'proctor-alpha') found.push(ip); })
+                        .catch(() => { clearTimeout(timeout); })
+                );
+            }
+            await Promise.all(promises);
+            if (found.length > 0) break;
+        }
     }
 
     if (found.length === 0) {
@@ -1708,6 +1747,35 @@ function formatTimeRemaining(ms) {
     return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
 }
 
+// Lock/unlock the student UI based on room status
+function setUILocked(locked, reason) {
+    const editorContainer = document.getElementById('monaco-container');
+    const shellContainer = document.getElementById('shell-container');
+    const submitBtn = document.getElementById('submit-work-btn');
+    
+    if (locked) {
+        // Create or update a lock overlay
+        let overlay = document.getElementById('ui-lock-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'ui-lock-overlay';
+            overlay.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; display: flex; align-items: center; justify-content: center; pointer-events: all;';
+            document.getElementById('ide-container').appendChild(overlay);
+        }
+        overlay.innerHTML = `<div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.9); border: 1px solid var(--border-color); border-radius: 16px; max-width: 400px;">
+            <div style="font-size: 2em; margin-bottom: 16px;">🔒</div>
+            <h3 style="margin-bottom: 8px; color: #fff;">${reason || 'Session Locked'}</h3>
+            <p style="color: #888; font-size: 0.9em;">The editor and terminal are disabled.</p>
+        </div>`;
+        overlay.style.display = 'flex';
+        if (submitBtn) submitBtn.style.display = 'none';
+    } else {
+        const overlay = document.getElementById('ui-lock-overlay');
+        if (overlay) overlay.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+    }
+}
+
 async function pollTimer() {
     if (!isStudentSessionActive || !currentRoomId || hasSubmitted) return;
 
@@ -1720,19 +1788,28 @@ async function pollTimer() {
         const remainingText = document.getElementById('remaining-time-text');
         const submitBtn = document.getElementById('submit-work-btn');
 
-        // Show submit button when session is active
-        if (data.status === 1) { // Active
-            submitBtn.style.display = 'inline-block';
-        }
-
-        // Handle room completed by admin
-        if (data.status === 4) { // Complete
+        // Lock UI when session is NOT active
+        if (data.status === 0) { // Waiting
+            setUILocked(true, 'Waiting for exam to start');
+            if (submitBtn) submitBtn.style.display = 'none';
+            remainingDisplay.style.display = 'none';
+            return;
+        } else if (data.status === 3) { // Paused
+            setUILocked(true, 'Exam is paused by the proctor');
+            if (submitBtn) submitBtn.style.display = 'none';
+            return;
+        } else if (data.status === 4) { // Complete
             if (!hasSubmitted) {
-                addLogEntry('alert', '⏰ Time is up! Auto-submitting your work...');
+                addLogEntry('alert', '⏰ Session ended! Auto-submitting your work...');
                 await submitWork();
             }
+            setUILocked(true, 'Exam has ended');
             return;
         }
+
+        // Status is Active (1) — unlock UI
+        setUILocked(false);
+        if (submitBtn) submitBtn.style.display = 'inline-block';
 
         if (data.is_timer_active) {
             remainingDisplay.style.display = 'flex';
@@ -1743,6 +1820,10 @@ async function pollTimer() {
                 remainingDisplay.style.background = 'rgba(239,68,68,0.15)';
                 remainingDisplay.style.borderColor = 'rgba(239,68,68,0.3)';
                 remainingDisplay.style.color = '#ef4444';
+            } else {
+                remainingDisplay.style.background = 'rgba(245,158,11,0.15)';
+                remainingDisplay.style.borderColor = 'rgba(245,158,11,0.3)';
+                remainingDisplay.style.color = '#f59e0b';
             }
 
             // Auto-submit when timer hits zero
