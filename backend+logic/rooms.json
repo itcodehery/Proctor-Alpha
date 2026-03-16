@@ -83,6 +83,38 @@
     "invite_list": [],
     "students": []
   },
+  "HT7WYQ": {
+    "id": "HT7WYQ",
+    "host_id": "EMP3202",
+    "session_name": "Hey",
+    "sets": {},
+    "active_status": 1,
+    "admin_key": "1234",
+    "time_allocated": 0,
+    "start_time": "2026-03-16T11:38:09.833496+05:30",
+    "end_time": "2026-03-16T11:38:09.833496+05:30",
+    "forbidden_apps": [
+      "Antigravity"
+    ],
+    "invite_list": [],
+    "students": [
+      {
+        "id": "802ca4eca754053c",
+        "user_id": "2547120",
+        "username": "Hari",
+        "regno": "2547120",
+        "active_status": 0,
+        "selected_set": "",
+        "ip_address": "10.156.236.41:43846",
+        "last_ping": "2026-03-16T11:38:22.303982+05:30",
+        "score": 0,
+        "workspace": null,
+        "active_file": "",
+        "latest_snapshot": "",
+        "activity_log": null
+      }
+    ]
+  },
   "K6V8FL": {
     "id": "K6V8FL",
     "host_id": "Emop",
@@ -124,6 +156,38 @@
     "forbidden_apps": null,
     "invite_list": null,
     "students": []
+  },
+  "T8FQUR": {
+    "id": "T8FQUR",
+    "host_id": "FBSDF",
+    "session_name": "Test1",
+    "sets": {},
+    "active_status": 1,
+    "admin_key": "1234",
+    "time_allocated": 0,
+    "start_time": "2026-03-16T11:40:34.165162+05:30",
+    "end_time": "0001-01-01T00:00:00Z",
+    "forbidden_apps": [
+      "Antigravity"
+    ],
+    "invite_list": [],
+    "students": [
+      {
+        "id": "393af8d741c73497",
+        "user_id": "2547120",
+        "username": "Hari",
+        "regno": "2547120",
+        "active_status": 0,
+        "selected_set": "",
+        "ip_address": "10.156.236.41:44734",
+        "last_ping": "2026-03-16T11:40:25.42542+05:30",
+        "score": 0,
+        "workspace": null,
+        "active_file": "",
+        "latest_snapshot": "",
+        "activity_log": null
+      }
+    ]
   },
   "VE2C76": {
     "id": "VE2C76",
