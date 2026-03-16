@@ -97,6 +97,34 @@
     "invite_list": null,
     "students": []
   },
+  "VE2C76": {
+    "id": "VE2C76",
+    "host_id": "13772",
+    "session_name": "Achaaaaaaaar",
+    "sets": {},
+    "active_status": 1,
+    "admin_key": "1234",
+    "time_allocated": 120000000000,
+    "start_time": "2026-03-16T11:11:08.760431+05:30",
+    "end_time": "2026-03-16T11:13:08.760431+05:30",
+    "forbidden_apps": [],
+    "invite_list": [],
+    "students": [
+      {
+        "id": "64714345f2694f6c",
+        "user_id": "2547120",
+        "username": "Hari",
+        "regno": "2547120",
+        "active_status": 0,
+        "selected_set": "",
+        "ip_address": "10.156.236.41:47330",
+        "last_ping": "2026-03-16T11:08:14.969668+05:30",
+        "score": 0,
+        "workspace": null,
+        "latest_snapshot": ""
+      }
+    ]
+  },
   "a5c0ee60-c057-4bd2-b9a4-90e1d99660a8": {
     "id": "a5c0ee60-c057-4bd2-b9a4-90e1d99660a8",
     "host_id": "A123",

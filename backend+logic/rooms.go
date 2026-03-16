@@ -64,12 +64,14 @@ type UserSession struct {
 	Username     string      `json:"username"`
 	RegNo        string      `json:"regno"`
 	ActiveStatus UStatusEnum `json:"active_status"`
-	SelectedSet  string      `json:"selected_set"` // Changed to string to match Room.Sets key
-	IpAddress      string            `json:"ip_address"`   // Security tracking
-	LastPing       time.Time         `json:"last_ping"`    // To detect disconnects
-	Score          float64           `json:"score"`        // Optional: for auto-grading
-	Workspace      map[string]string `json:"workspace"`    // Live sync code
-	LatestSnapshot string            `json:"latest_snapshot"` // Base64 screenshot
+	SelectedSet  string      `json:"selected_set"`
+	IpAddress      string            `json:"ip_address"`
+	LastPing       time.Time         `json:"last_ping"`
+	Score          float64           `json:"score"`
+	Workspace      map[string]string `json:"workspace"`
+	ActiveFile     string            `json:"active_file"`
+	LatestSnapshot string            `json:"latest_snapshot"`
+	ActivityLog    []string          `json:"activity_log"`
 }
 
 var (
@@ -165,9 +167,10 @@ func SyncCodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		RoomID string            `json:"room_id"`
-		UserID string            `json:"user_id"`
-		Files  map[string]string `json:"files"`
+		RoomID     string            `json:"room_id"`
+		UserID     string            `json:"user_id"`
+		Files      map[string]string `json:"files"`
+		ActiveFile string            `json:"active_file"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -192,6 +195,10 @@ func SyncCodeHandler(w http.ResponseWriter, r *http.Request) {
 			for name, content := range req.Files {
 				room.Students[i].Workspace[name] = content
 			}
+			if req.ActiveFile != "" {
+				room.Students[i].ActiveFile = req.ActiveFile
+			}
+			room.Students[i].LastPing = time.Now()
 			broadcastUpdate(req.RoomID, "STUDENT_CODE_UPDATE", room.Students[i])
 			break
 		}
@@ -225,6 +232,51 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		if s.UserID == req.UserID {
 			room.Students[i].LatestSnapshot = req.Snapshot
 			broadcastUpdate(req.RoomID, "STUDENT_SNAPSHOT_UPDATE", room.Students[i])
+			break
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// StartExamHandler allows the admin to start the exam
+// LogActivityHandler records student activity events
+func LogActivityHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		RoomID  string `json:"room_id"`
+		UserID  string `json:"user_id"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	timestamp := time.Now().Format("15:04:05")
+	entry := fmt.Sprintf("[%s] %s", timestamp, req.Message)
+
+	for i, s := range room.Students {
+		if s.UserID == req.UserID {
+			room.Students[i].ActivityLog = append(room.Students[i].ActivityLog, entry)
+			if len(room.Students[i].ActivityLog) > 100 {
+				room.Students[i].ActivityLog = room.Students[i].ActivityLog[len(room.Students[i].ActivityLog)-100:]
+			}
 			break
 		}
 	}

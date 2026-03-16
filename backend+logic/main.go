@@ -111,6 +111,7 @@ func main() {
 	http.HandleFunc("/student/snapshot", SnapshotHandler)
 	http.HandleFunc("/submit", SubmitHandler)
 	http.HandleFunc("/timer-info", TimerInfoHandler)
+	http.HandleFunc("/log-activity", LogActivityHandler)
 
 	// Discovery endpoint - students can ping this to verify a proctor is running
 	http.HandleFunc("/discover", func(w http.ResponseWriter, r *http.Request) {
