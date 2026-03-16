@@ -80,7 +80,7 @@ func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	ip := GetLocalIP()
-	fmt.Printf("Starting Proctor Process Shield on :8080...\n")
+	fmt.Printf("Starting Proctor Process Shield on :8081...\n")
 	if ip != "" {
 		fmt.Printf("Admin: Share this IP with students: %s\n", ip)
 	}
@@ -104,7 +104,7 @@ func main() {
 		fmt.Fprintf(w, "Proctor Backend Active. Use /scan to check processes.")
 	})
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8081", nil)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
 	}

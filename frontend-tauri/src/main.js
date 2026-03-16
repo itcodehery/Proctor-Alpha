@@ -10,21 +10,21 @@ import "@xterm/xterm/css/xterm.css";
 
 // --- Monaco Setup ---
 self.MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId, label) {
-        if (label === 'json') {
-            return './node_modules/monaco-editor/esm/vs/language/json/json.worker.js';
-        }
-        if (label === 'css' || label === 'scss' || label === 'less') {
-            return './node_modules/monaco-editor/esm/vs/language/css/css.worker.js';
-        }
-        if (label === 'html' || label === 'handlebars' || label === 'razor') {
-            return './node_modules/monaco-editor/esm/vs/language/html/html.worker.js';
-        }
-        if (label === 'typescript' || label === 'javascript') {
-            return './node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js';
-        }
-        return './node_modules/monaco-editor/esm/vs/editor/editor.worker.js';
+  getWorkerUrl: function(_moduleId, label) {
+    if (label === 'json') {
+      return './node_modules/monaco-editor/esm/vs/language/json/json.worker.js';
     }
+    if (label === 'css' || label === 'scss' || label === 'less') {
+      return './node_modules/monaco-editor/esm/vs/language/css/css.worker.js';
+    }
+    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      return './node_modules/monaco-editor/esm/vs/language/html/html.worker.js';
+    }
+    if (label === 'typescript' || label === 'javascript') {
+      return './node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js';
+    }
+    return './node_modules/monaco-editor/esm/vs/editor/editor.worker.js';
+  }
 };
 
 let monacoEditor = null;
@@ -36,141 +36,141 @@ let typingTimer = null;
 const TYPING_TIMEOUT = 3000; // 3 seconds
 
 function initMonaco() {
-    monacoEditor = monaco.editor.create(document.getElementById('monaco-container'), {
-        theme: 'vs-dark',
-        automaticLayout: true,
-        fontFamily: 'JetBrains Mono',
-        fontSize: 13,
-        minimap: { enabled: false },
-        lineNumbers: 'on',
-        renderWhitespace: 'none',
-        scrollBeyondLastLine: false,
-        backgroundColor: '#141417'
-    });
+  monacoEditor = monaco.editor.create(document.getElementById('monaco-container'), {
+    theme: 'vs-dark',
+    automaticLayout: true,
+    fontFamily: 'JetBrains Mono',
+    fontSize: 13,
+    minimap: { enabled: false },
+    lineNumbers: 'on',
+    renderWhitespace: 'none',
+    scrollBeyondLastLine: false,
+    backgroundColor: '#141417'
+  });
 
-    // Define a custom theme to match our Pro aesthetic
-    monaco.editor.defineTheme('proctor-theme', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [],
-        colors: {
-            'editor.background': '#141417',
-            'editor.lineHighlightBackground': '#1c1c21',
-            'editorCursor.foreground': '#10b981',
-            'editor.selectionBackground': '#10b98133',
-        }
-    });
-    monaco.editor.setTheme('proctor-theme');
+  // Define a custom theme to match our Pro aesthetic
+  monaco.editor.defineTheme('proctor-theme', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#141417',
+      'editor.lineHighlightBackground': '#1c1c21',
+      'editorCursor.foreground': '#10b981',
+      'editor.selectionBackground': '#10b98133',
+    }
+  });
+  monaco.editor.setTheme('proctor-theme');
 
-    // Track changes for unsaved state & Auto-save
-    monacoEditor.onDidChangeModelContent(() => {
-        if (activeFileName) {
-            handleTyping();
+  // Track changes for unsaved state & Auto-save
+  monacoEditor.onDidChangeModelContent(() => {
+    if (activeFileName) {
+      handleTyping();
 
-            if (!unsavedFiles.has(activeFileName)) {
-                unsavedFiles.add(activeFileName);
-                updateTabState(activeFileName, true);
-            }
-        }
-    });
+      if (!unsavedFiles.has(activeFileName)) {
+        unsavedFiles.add(activeFileName);
+        updateTabState(activeFileName, true);
+      }
+    }
+  });
 }
 
 // --- File Explorer & Tabs ---
 async function refreshFileList() {
-    try {
-        const files = await invoke('list_files');
-        const container = document.getElementById('file-list');
-        container.innerHTML = '';
+  try {
+    const files = await invoke('list_files');
+    const container = document.getElementById('file-list');
+    container.innerHTML = '';
 
-        files.forEach(file => {
-            const item = document.createElement('div');
-            item.className = `file-item ${file === activeFileName ? 'active' : ''}`;
-            item.innerHTML = `<span class="icon">📄</span> ${file}`;
-            item.onclick = () => openFile(file);
-            container.appendChild(item);
-        });
-    } catch (e) {
-        console.error('Failed to list files:', e);
-    }
+    files.forEach(file => {
+      const item = document.createElement('div');
+      item.className = `file-item ${file === activeFileName ? 'active' : ''}`;
+      item.innerHTML = `<span class="icon">📄</span> ${file}`;
+      item.onclick = () => openFile(file);
+      container.appendChild(item);
+    });
+  } catch (e) {
+    console.error('Failed to list files:', e);
+  }
 }
 
 async function openFile(name) {
-    if (activeFileName === name) return;
+  if (activeFileName === name) return;
 
-    if (!openFiles.has(name)) {
-        try {
-            const content = await invoke('read_file', { name });
-            const extension = name.split('.').pop();
-            let language = 'plaintext';
+  if (!openFiles.has(name)) {
+    try {
+      const content = await invoke('read_file', { name });
+      const extension = name.split('.').pop();
+      let language = 'plaintext';
 
-            // Basic language detection
-            const langMap = {
-                'js': 'javascript', 'ts': 'typescript', 'py': 'python',
-                'c': 'c', 'cpp': 'cpp', 'html': 'html', 'css': 'css',
-                'json': 'json', 'md': 'markdown', 'rs': 'rust'
-            };
-            language = langMap[extension] || 'plaintext';
+      // Basic language detection
+      const langMap = {
+        'js': 'javascript', 'ts': 'typescript', 'py': 'python',
+        'c': 'c', 'cpp': 'cpp', 'html': 'html', 'css': 'css',
+        'json': 'json', 'md': 'markdown', 'rs': 'rust'
+      };
+      language = langMap[extension] || 'plaintext';
 
-            const model = monaco.editor.createModel(content, language);
-            openFiles.set(name, { model, originalContent: content }); // Store original content if needed for diff checks later
-            addTab(name);
-        } catch (e) {
-            console.error('Failed to read file:', e);
-            return;
-        }
+      const model = monaco.editor.createModel(content, language);
+      openFiles.set(name, { model, originalContent: content }); // Store original content if needed for diff checks later
+      addTab(name);
+    } catch (e) {
+      console.error('Failed to read file:', e);
+      return;
     }
+  }
 
-    activeFileName = name;
-    const fileData = openFiles.get(name);
-    monacoEditor.setModel(fileData.model);
+  activeFileName = name;
+  const fileData = openFiles.get(name);
+  monacoEditor.setModel(fileData.model);
 
-    // Update UI
-    document.querySelectorAll('.file-item').forEach(el => {
-        el.classList.toggle('active', el.innerText.includes(name));
-    });
+  // Update UI
+  document.querySelectorAll('.file-item').forEach(el => {
+    el.classList.toggle('active', el.innerText.includes(name));
+  });
 
-    // Update active tab styling
-    document.querySelectorAll('.tab').forEach(el => {
-        el.classList.toggle('active', el.dataset.name === name);
-    });
+  // Update active tab styling
+  document.querySelectorAll('.tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.name === name);
+  });
 
-    monacoEditor.focus();
+  monacoEditor.focus();
 }
 
 function addTab(name) {
-    const tabBar = document.getElementById('tab-bar');
-    const tab = document.createElement('div');
-    tab.className = 'tab';
-    tab.dataset.name = name;
+  const tabBar = document.getElementById('tab-bar');
+  const tab = document.createElement('div');
+  tab.className = 'tab';
+  tab.dataset.name = name;
 
-    // Check if previously unsaved
-    if (unsavedFiles.has(name)) {
-        tab.classList.add('unsaved');
-    }
+  // Check if previously unsaved
+  if (unsavedFiles.has(name)) {
+    tab.classList.add('unsaved');
+  }
 
-    tab.innerHTML = `
+  tab.innerHTML = `
         <span class="tab-name">${name}</span>
         <span class="tab-close">✕</span>
     `;
 
-    tab.onclick = () => openFile(name);
-    tab.querySelector('.tab-close').onclick = (e) => {
-        e.stopPropagation();
-        closeFile(name);
-    };
+  tab.onclick = () => openFile(name);
+  tab.querySelector('.tab-close').onclick = (e) => {
+    e.stopPropagation();
+    closeFile(name);
+  };
 
-    tabBar.appendChild(tab);
+  tabBar.appendChild(tab);
 }
 
 function updateTabState(name, isUnsaved) {
-    const tab = document.querySelector(`.tab[data-name="${name}"]`);
-    if (tab) {
-        if (isUnsaved) {
-            tab.classList.add('unsaved');
-        } else {
-            tab.classList.remove('unsaved');
-        }
+  const tab = document.querySelector(`.tab[data-name="${name}"]`);
+  if (tab) {
+    if (isUnsaved) {
+      tab.classList.add('unsaved');
+    } else {
+      tab.classList.remove('unsaved');
     }
+  }
 }
 
 // --- Auto-Save Logic ---
@@ -178,104 +178,104 @@ const saveStatusEl = document.getElementById('save-status');
 const autoSaveToggleBtn = document.getElementById('auto-save-toggle');
 
 function updateSaveStatus(status) {
-    saveStatusEl.innerText = status;
+  saveStatusEl.innerText = status;
 }
 
 function handleTyping() {
-    updateSaveStatus("Typing...");
+  updateSaveStatus("Typing...");
 
-    if (typingTimer) {
-        clearTimeout(typingTimer);
-    }
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+  }
 
-    if (autoSaveEnabled) {
-        typingTimer = setTimeout(() => {
-            saveCurrentFile();
-            updateSaveStatus("Saved");
-        }, TYPING_TIMEOUT);
-    } else {
-        updateSaveStatus("Unsaved");
-    }
+  if (autoSaveEnabled) {
+    typingTimer = setTimeout(() => {
+      saveCurrentFile();
+      updateSaveStatus("Saved");
+    }, TYPING_TIMEOUT);
+  } else {
+    updateSaveStatus("Unsaved");
+  }
 }
 
 function toggleAutoSave() {
-    autoSaveEnabled = !autoSaveEnabled;
-    autoSaveToggleBtn.classList.toggle('enabled', autoSaveEnabled);
+  autoSaveEnabled = !autoSaveEnabled;
+  autoSaveToggleBtn.classList.toggle('enabled', autoSaveEnabled);
 
-    if (autoSaveEnabled) {
-        // If enabling and there are unsaved changes, start timer
-        if (activeFileName && unsavedFiles.has(activeFileName)) {
-            handleTyping();
-        } else {
-            updateSaveStatus("Ready");
-        }
+  if (autoSaveEnabled) {
+    // If enabling and there are unsaved changes, start timer
+    if (activeFileName && unsavedFiles.has(activeFileName)) {
+      handleTyping();
     } else {
-        if (typingTimer) {
-            clearTimeout(typingTimer);
-            typingTimer = null;
-        }
-        updateSaveStatus(unsavedFiles.has(activeFileName) ? "Unsaved" : "Ready");
+      updateSaveStatus("Ready");
     }
+  } else {
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+      typingTimer = null;
+    }
+    updateSaveStatus(unsavedFiles.has(activeFileName) ? "Unsaved" : "Ready");
+  }
 }
 
 async function saveCurrentFile() {
-    if (!activeFileName) return;
+  if (!activeFileName) return;
 
-    // Clear any pending auto-save timer to avoid double save
-    if (typingTimer) {
-        clearTimeout(typingTimer);
-        typingTimer = null;
-    }
+  // Clear any pending auto-save timer to avoid double save
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+    typingTimer = null;
+  }
 
-    const content = monacoEditor.getValue();
-    try {
-        await invoke('write_file', { name: activeFileName, content });
+  const content = monacoEditor.getValue();
+  try {
+    await invoke('write_file', { name: activeFileName, content });
 
-        unsavedFiles.delete(activeFileName);
-        updateTabState(activeFileName, false);
-        updateSaveStatus("Saved");
+    unsavedFiles.delete(activeFileName);
+    updateTabState(activeFileName, false);
+    updateSaveStatus("Saved");
 
-        // Visual feedback (optional)
-        const saveBtn = document.getElementById('save-file-btn');
-        const originalText = saveBtn.innerText;
-        saveBtn.innerText = "✓";
-        setTimeout(() => saveBtn.innerText = originalText, 1000);
+    // Visual feedback (optional)
+    const saveBtn = document.getElementById('save-file-btn');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = "✓";
+    setTimeout(() => saveBtn.innerText = originalText, 1000);
 
-    } catch (e) {
-        console.error("Failed to save:", e);
-        updateSaveStatus("Error");
-        alert("Failed to save file: " + e);
-    }
+  } catch (e) {
+    console.error("Failed to save:", e);
+    updateSaveStatus("Error");
+    alert("Failed to save file: " + e);
+  }
 }
 
 autoSaveToggleBtn.onclick = toggleAutoSave;
 
 function closeFile(name) {
-    if (unsavedFiles.has(name)) {
-        if (!confirm(`File ${name} has unsaved changes. Close anyway?`)) {
-            return;
-        }
-        unsavedFiles.delete(name);
+  if (unsavedFiles.has(name)) {
+    if (!confirm(`File ${name} has unsaved changes. Close anyway?`)) {
+      return;
     }
+    unsavedFiles.delete(name);
+  }
 
-    if (openFiles.has(name)) {
-        const fileData = openFiles.get(name);
-        fileData.model.dispose();
-        openFiles.delete(name);
+  if (openFiles.has(name)) {
+    const fileData = openFiles.get(name);
+    fileData.model.dispose();
+    openFiles.delete(name);
 
-        const tab = document.querySelector(`.tab[data-name="${name}"]`);
-        if (tab) tab.remove();
+    const tab = document.querySelector(`.tab[data-name="${name}"]`);
+    if (tab) tab.remove();
 
-        if (activeFileName === name) {
-            const remaining = Array.from(openFiles.keys());
-            if (remaining.length > 0) {
-                openFile(remaining[remaining.length - 1]);
-            } else {
-                activeFileName = null;
-                monacoEditor.setModel(null);
-            }
-        }
+    if (activeFileName === name) {
+      const remaining = Array.from(openFiles.keys());
+      if (remaining.length > 0) {
+        openFile(remaining[remaining.length - 1]);
+      } else {
+        activeFileName = null;
+        monacoEditor.setModel(null);
+      }
     }
+  }
 }
 
 document.getElementById('refresh-files-btn').onclick = () => refreshFileList();
@@ -288,11 +288,11 @@ const createFileConfirmBtn = document.getElementById('create-file-confirm-btn');
 const newFileCloseIcon = document.getElementById('new-file-close-icon');
 
 function toggleNewFileModal(show) {
-    newFileDialog.style.display = show ? 'flex' : 'none';
-    if (show) {
-        newFileInput.value = '';
-        newFileInput.focus();
-    }
+  newFileDialog.style.display = show ? 'flex' : 'none';
+  if (show) {
+    newFileInput.value = '';
+    newFileInput.focus();
+  }
 }
 
 document.getElementById('new-file-btn').onclick = () => toggleNewFileModal(true);
@@ -301,93 +301,93 @@ newFileCloseIcon.onclick = () => toggleNewFileModal(false);
 
 // Close on background click
 newFileDialog.onclick = (e) => {
-    if (e.target === newFileDialog) toggleNewFileModal(false);
+  if (e.target === newFileDialog) toggleNewFileModal(false);
 };
 
 async function handleCreateFile() {
-    const fileName = newFileInput.value.trim();
-    if (!fileName) {
-        alert("Please enter a file name");
-        return;
-    }
+  const fileName = newFileInput.value.trim();
+  if (!fileName) {
+    alert("Please enter a file name");
+    return;
+  }
 
-    try {
-        await invoke('create_file', { name: fileName });
-        await refreshFileList();
-        openFile(fileName);
-        toggleNewFileModal(false);
-    } catch (e) {
-        alert("Error creating file: " + e);
-    }
+  try {
+    await invoke('create_file', { name: fileName });
+    await refreshFileList();
+    openFile(fileName);
+    toggleNewFileModal(false);
+  } catch (e) {
+    alert("Error creating file: " + e);
+  }
 }
 
 createFileConfirmBtn.onclick = handleCreateFile;
 newFileInput.onkeydown = (e) => {
-    if (e.key === 'Enter') handleCreateFile();
-    if (e.key === 'Escape') toggleNewFileModal(false);
+  if (e.key === 'Enter') handleCreateFile();
+  if (e.key === 'Escape') toggleNewFileModal(false);
 };
 
 // --- Terminal Factory ---
 function createTerminal(containerId, ptyId) {
-    const term = new Terminal({
-        theme: {
-            background: '#141417',
-            foreground: '#f8fafc',
-            cursor: '#10b981',
-            selectionBackground: 'rgba(16, 185, 129, 0.3)',
-        },
-        fontSize: 13,
-        fontFamily: 'JetBrains Mono',
-        cursorBlink: true,
-        altClickMovesCursor: false,
-        lineHeight: 1.2,
+  const term = new Terminal({
+    theme: {
+      background: '#141417',
+      foreground: '#f8fafc',
+      cursor: '#10b981',
+      selectionBackground: 'rgba(16, 185, 129, 0.3)',
+    },
+    fontSize: 13,
+    fontFamily: 'JetBrains Mono',
+    cursorBlink: true,
+    altClickMovesCursor: false,
+    lineHeight: 1.2,
+  });
+
+  const fitAddon = new FitAddon();
+  term.loadAddon(fitAddon);
+
+  const container = document.getElementById(containerId);
+  term.open(container);
+
+  // Initial fit
+  setTimeout(() => fitAddon.fit(), 100);
+
+  // Handle input from terminal
+  term.onData((data) => {
+    const bytes = new TextEncoder().encode(data);
+    invoke("write_to_pty", {
+      ptyId: ptyId,
+      data: Array.from(bytes)
     });
+  });
 
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-
-    const container = document.getElementById(containerId);
-    term.open(container);
-
-    // Initial fit
-    setTimeout(() => fitAddon.fit(), 100);
-
-    // Handle input from terminal
-    term.onData((data) => {
-        const bytes = new TextEncoder().encode(data);
-        invoke("write_to_pty", {
-            ptyId: ptyId,
-            data: Array.from(bytes)
-        });
-    });
-
-    // Custom key handler to capture shortcuts
-    term.attachCustomKeyEventHandler((e) => {
-        if (e.type === 'keydown') {
-            // Alt + Shift + S (Toggle)
-            if (e.altKey && e.shiftKey && e.code === 'KeyS') {
-                if (ptyId === 'terminal') {
-                    monacoEditor.focus();
-                } else {
-                    shell.term.focus();
-                }
-                return false;
-            }
-            // Alt + Shift + E (Focus Editor)
-            if (e.altKey && e.shiftKey && e.code === 'KeyE') {
-                monacoEditor.focus();
-                return false;
-            }
-            // Alt + Shift + T (Focus Terminal)
-            if (e.altKey && e.shiftKey && e.code === 'KeyT') {
-                shell.term.focus();
-                return false;
-            }
+  // Custom key handler to capture shortcuts
+  term.attachCustomKeyEventHandler((e) => {
+    if (e.type === 'keydown') {
+      // Alt + Shift + S (Toggle)
+      if (e.altKey && e.shiftKey && e.code === 'KeyS') {
+        if (ptyId === 'terminal') {
+          monacoEditor.focus();
+        } else {
+          shell.term.focus();
         }
-        return true;
-    });
+        return false;
+      }
+      // Alt + Shift + E (Focus Editor)
+      if (e.altKey && e.shiftKey && e.code === 'KeyE') {
+        monacoEditor.focus();
+        return false;
+      }
+      // Alt + Shift + T (Focus Terminal)
+      if (e.altKey && e.shiftKey && e.code === 'KeyT') {
+        shell.term.focus();
+        return false;
+      }
+    }
+    return true;
+  });
 
-    return { term, fitAddon };
+  return { term, fitAddon };
 }
 
 // --- Initialize Components ---
@@ -398,63 +398,63 @@ refreshFileList();
 
 // --- Global Shortcut Listener ---
 window.addEventListener('keydown', (e) => {
-    // Save: Ctrl + S or Cmd + S
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveCurrentFile();
-        return;
-    }
+  // Save: Ctrl + S or Cmd + S
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveCurrentFile();
+    return;
+  }
 
-    if (e.altKey && e.shiftKey && e.code === 'KeyS') {
-        e.preventDefault();
-        if (document.activeElement.closest('.monaco-instance')) {
-            shell.term.focus();
-        } else {
-            monacoEditor.focus();
-        }
+  if (e.altKey && e.shiftKey && e.code === 'KeyS') {
+    e.preventDefault();
+    if (document.activeElement.closest('.monaco-instance')) {
+      shell.term.focus();
+    } else {
+      monacoEditor.focus();
     }
-    if (e.altKey && e.shiftKey && e.code === 'KeyE') {
-        e.preventDefault();
-        monacoEditor.focus();
-    }
-    if (e.altKey && e.shiftKey && e.code === 'KeyT') {
-        e.preventDefault();
-        shell.term.focus();
-    }
+  }
+  if (e.altKey && e.shiftKey && e.code === 'KeyE') {
+    e.preventDefault();
+    monacoEditor.focus();
+  }
+  if (e.altKey && e.shiftKey && e.code === 'KeyT') {
+    e.preventDefault();
+    shell.term.focus();
+  }
 });
 
 // --- Listen for PTY output from Rust ---
 listen("pty-output", (event) => {
-    const { pty_id, data } = event.payload;
-    const bytes = new Uint8Array(data);
-    if (pty_id === 'terminal') {
-        shell.term.write(bytes);
-    }
+  const { pty_id, data } = event.payload;
+  const bytes = new Uint8Array(data);
+  if (pty_id === 'terminal') {
+    shell.term.write(bytes);
+  }
 });
 
 // --- Handle Global Resizes ---
 window.addEventListener('resize', () => {
-    shell.fitAddon.fit();
+  shell.fitAddon.fit();
 });
 
 // --- Split.js Initialization ---
 Split(['#col-left', '#col-right'], {
-    sizes: [72, 28],
-    minSize: 200,
-    gutterSize: 6,
-    onDrag: () => {
-        shell.fitAddon.fit();
-    }
+  sizes: [72, 28],
+  minSize: 200,
+  gutterSize: 6,
+  onDrag: () => {
+    shell.fitAddon.fit();
+  }
 });
 
 Split(['#pane-editor', '#pane-terminal'], {
-    direction: 'vertical',
-    sizes: [65, 35],
-    minSize: 100,
-    gutterSize: 6,
-    onDrag: () => {
-        shell.fitAddon.fit();
-    }
+  direction: 'vertical',
+  sizes: [65, 35],
+  minSize: 100,
+  gutterSize: 6,
+  onDrag: () => {
+    shell.fitAddon.fit();
+  }
 });
 
 // --- Session Timer ---
@@ -463,41 +463,41 @@ let timerInterval = null;
 const sessionTimerDisplay = document.querySelector('.session-timer');
 
 function formatTime(totalSeconds) {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function startTimer() {
-    if (timerInterval) return;
-    timerInterval = setInterval(() => {
-        sessionSeconds++;
-        sessionTimerDisplay.innerText = formatTime(sessionSeconds);
-    }, 1000);
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    sessionSeconds++;
+    sessionTimerDisplay.innerText = formatTime(sessionSeconds);
+  }, 1000);
 }
 
 startTimer();
 
 // --- Process Shield (Go Backend Integration) ---
 async function pollProcessShield() {
-    try {
-        // Process Shield Poll runs globally?
-        // If it runs on Student PC, it scans Local.
-        // If it runs on Admin PC, it scans Local.
-        // So always Local.
-        const response = await fetch(`${getAdminApiBase()}/scan`);
-        if (!response.ok) return;
-        const data = await response.json();
+  try {
+    // Process Shield Poll runs globally?
+    // If it runs on Student PC, it scans Local.
+    // If it runs on Admin PC, it scans Local.
+    // So always Local.
+    const response = await fetch(`${getAdminApiBase()}/scan`);
+    if (!response.ok) return;
+    const data = await response.json();
 
-        if (data.forbidden_found) {
-            const apps = data.processes.join(', ');
-            // Check if we just logged this to avoid spamming? 
-            // For now, simple logging.
-            addLogEntry('alert', `Process Shield: Detected ${apps}`);
-        }
-    } catch (e) {
-        // Backend likely offline
+    if (data.forbidden_found) {
+      const apps = data.processes.join(', ');
+      // Check if we just logged this to avoid spamming? 
+      // For now, simple logging.
+      addLogEntry('alert', `Process Shield: Detected ${apps}`);
     }
+  } catch (e) {
+    // Backend likely offline
+  }
 }
 
 setInterval(pollProcessShield, 5000);
@@ -513,74 +513,74 @@ const activeIndicators = document.querySelectorAll('.active-only');
 const pausedIndicators = document.querySelectorAll('.paused-only');
 
 function setSessionState(isPaused) {
-    if (isPaused) {
-        appContainer.classList.add('paused-mode');
-        dialogOverlay.style.display = 'flex';
-        activeIndicators.forEach(el => el.style.display = 'none');
-        pausedIndicators.forEach(el => el.style.display = 'flex');
-        adminInput.focus();
-    } else {
-        appContainer.classList.remove('paused-mode');
-        dialogOverlay.style.display = 'none';
-        activeIndicators.forEach(el => el.style.display = 'flex');
-        pausedIndicators.forEach(el => el.style.display = 'none');
-        adminInput.value = '';
-    }
+  if (isPaused) {
+    appContainer.classList.add('paused-mode');
+    dialogOverlay.style.display = 'flex';
+    activeIndicators.forEach(el => el.style.display = 'none');
+    pausedIndicators.forEach(el => el.style.display = 'flex');
+    adminInput.focus();
+  } else {
+    appContainer.classList.remove('paused-mode');
+    dialogOverlay.style.display = 'none';
+    activeIndicators.forEach(el => el.style.display = 'flex');
+    pausedIndicators.forEach(el => el.style.display = 'none');
+    adminInput.value = '';
+  }
 }
 
 endSessionBtn.addEventListener('click', () => setSessionState(true));
 closeIcon.addEventListener('click', () => setSessionState(false));
 
 dialogOverlay.addEventListener('click', (e) => {
-    if (e.target === dialogOverlay) setSessionState(false);
+  if (e.target === dialogOverlay) setSessionState(false);
 });
 
 async function exportLog() {
-    const entries = Array.from(document.querySelectorAll('.log-entry')).map(entry => {
-        const time = entry.querySelector('.log-time').innerText;
-        const task = entry.querySelector('.log-task').innerText;
-        return `[${time}] ${task}`;
-    }).join('\n');
+  const entries = Array.from(document.querySelectorAll('.log-entry')).map(entry => {
+    const time = entry.querySelector('.log-time').innerText;
+    const task = entry.querySelector('.log-task').innerText;
+    return `[${time}] ${task}`;
+  }).join('\n');
 
-    try {
-        await invoke('save_log', { logContent: entries });
-        return true;
-    } catch (e) {
-        console.error('Failed to save log:', e);
-        return false;
-    }
+  try {
+    await invoke('save_log', { logContent: entries });
+    return true;
+  } catch (e) {
+    console.error('Failed to save log:', e);
+    return false;
+  }
 }
 
 adminInput.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-        const key = adminInput.value;
-        const isValid = await invoke('verify_admin_key', { adminKey: key });
-        if (isValid) {
-            await exportLog();
-            await invoke('exit_app');
-        } else {
-            adminInput.classList.add('error');
-            setTimeout(() => adminInput.classList.remove('error'), 500);
-        }
+  if (e.key === 'Enter') {
+    const key = adminInput.value;
+    const isValid = await invoke('verify_admin_key', { adminKey: key });
+    if (isValid) {
+      await exportLog();
+      await invoke('exit_app');
+    } else {
+      adminInput.classList.add('error');
+      setTimeout(() => adminInput.classList.remove('error'), 500);
     }
+  }
 });
 
 listen('attempted-close', () => {
-    setSessionState(true);
+  setSessionState(true);
 });
 
 // --- Logger Logic ---
 const logEntriesContainer = document.getElementById('log-entries');
 
 function addLogEntry(type, message) {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const now = new Date();
+  const timeString = now.toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    const entryDiv = document.createElement('div');
-    entryDiv.className = 'log-entry';
-    entryDiv.setAttribute('data-type', type);
+  const entryDiv = document.createElement('div');
+  entryDiv.className = 'log-entry';
+  entryDiv.setAttribute('data-type', type);
 
-    entryDiv.innerHTML = `
+  entryDiv.innerHTML = `
         <div class="log-header">
             <span class="log-type-tag">${type}</span>
             <span class="log-time">${timeString}</span>
@@ -588,38 +588,38 @@ function addLogEntry(type, message) {
         <div class="log-task">${message}</div>
     `;
 
-    logEntriesContainer.appendChild(entryDiv);
-    logEntriesContainer.scrollTop = logEntriesContainer.scrollHeight;
+  logEntriesContainer.appendChild(entryDiv);
+  logEntriesContainer.scrollTop = logEntriesContainer.scrollHeight;
 }
 
 listen('log-event', (event) => {
-    const { type, message } = event.payload;
-    addLogEntry(type === 'command' ? 'command' : 'file', message);
-    if (type === 'file') {
-        refreshFileList();
-    }
+  const { type, message } = event.payload;
+  addLogEntry(type === 'command' ? 'command' : 'file', message);
+  if (type === 'file') {
+    refreshFileList();
+  }
 });
 
 const exportLogBtn = document.querySelector('.export-log-btn');
 if (exportLogBtn) {
-    exportLogBtn.addEventListener('click', async () => {
-        const success = await exportLog();
-        if (success) {
-            exportLogBtn.innerText = "Log Exported";
-            setTimeout(() => exportLogBtn.innerText = "Export Session Log", 3000);
-        }
-    });
+  exportLogBtn.addEventListener('click', async () => {
+    const success = await exportLog();
+    if (success) {
+      exportLogBtn.innerText = "Log Exported";
+      setTimeout(() => exportLogBtn.innerText = "Export Session Log", 3000);
+    }
+  });
 }
 
 // --- Window Controls Logic ---
 const appWindow = getCurrentWindow();
 
 function attachWindowControl(id, action) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('click', action);
-    // STOPS the drag region from capturing the click
-    el.addEventListener('mousedown', (e) => e.stopPropagation());
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', action);
+  // STOPS the drag region from capturing the click
+  el.addEventListener('mousedown', (e) => e.stopPropagation());
 }
 
 // Attach to IDE controls
@@ -664,32 +664,32 @@ let isStudentSessionActive = false;
 
 
 const DEFAULT_IP = "localhost";
-const API_PORT = "8080";
+const API_PORT = "8081";
 
 function getServerIp() {
-    return localStorage.getItem('server_ip') || DEFAULT_IP;
+  return localStorage.getItem('server_ip') || DEFAULT_IP;
 }
 
 function saveServerIp(ip) {
-    if (ip) {
-        localStorage.setItem('server_ip', ip);
-    }
+  if (ip) {
+    localStorage.setItem('server_ip', ip);
+  }
 }
 
 function getStudentApiBase() {
-    return `http://${getServerIp()}:${API_PORT}`;
+  return `http://${getServerIp()}:${API_PORT}`;
 }
 
 function getAdminApiBase() {
-    return `http://localhost:${API_PORT}`;
+  return `http://localhost:${API_PORT}`;
 }
 
 function getStudentWsBase() {
-    return `ws://${getServerIp()}:${API_PORT}/ws`;
+  return `ws://${getServerIp()}:${API_PORT}/ws`;
 }
 
 function getAdminWsBase() {
-    return `ws://localhost:${API_PORT}/ws`;
+  return `ws://localhost:${API_PORT}/ws`;
 }
 
 // Helper to decide which base to use based on context or just use specific ones
@@ -708,67 +708,67 @@ const { Command } = window.__TAURI__.shell; // Access shell plugin
 
 // Backend Management
 async function checkBackendHealth() {
-    try {
-        const res = await fetch(`${getAdminApiBase()}/scan`, { method: 'OPTIONS' }); // Lightweight check
-        if (res.ok) {
-            updateServerStatus(true);
-            return true;
-        }
-    } catch (e) {
-        updateServerStatus(false);
-        return false;
+  try {
+    const res = await fetch(`${getAdminApiBase()}/scan`, { method: 'OPTIONS' }); // Lightweight check
+    if (res.ok) {
+      updateServerStatus(true);
+      return true;
     }
+  } catch (e) {
+    updateServerStatus(false);
     return false;
+  }
+  return false;
 }
 
 function updateServerStatus(isOnline) {
-    if (serverStatusIndicator) {
-        if (isOnline) {
-            serverStatusIndicator.classList.add('online');
-            serverStatusIndicator.classList.remove('error');
-            serverStatusIndicator.querySelector('.status-text').innerText = "ONLINE";
-        } else {
-            serverStatusIndicator.classList.remove('online');
-            serverStatusIndicator.classList.add('error');
-            serverStatusIndicator.querySelector('.status-text').innerText = "OFFLINE";
-        }
+  if (serverStatusIndicator) {
+    if (isOnline) {
+      serverStatusIndicator.classList.add('online');
+      serverStatusIndicator.classList.remove('error');
+      serverStatusIndicator.querySelector('.status-text').innerText = "ONLINE";
+    } else {
+      serverStatusIndicator.classList.remove('online');
+      serverStatusIndicator.classList.add('error');
+      serverStatusIndicator.querySelector('.status-text').innerText = "OFFLINE";
     }
+  }
 }
 
 async function startBackend() {
-    const isOnline = await checkBackendHealth();
-    if (isOnline) return; // Already running
+  const isOnline = await checkBackendHealth();
+  if (isOnline) return; // Already running
 
-    console.log("Starting Backend Server...");
-    if (serverStatusIndicator) {
-        serverStatusIndicator.querySelector('.status-text').innerText = "STARTING...";
-    }
+  console.log("Starting Backend Server...");
+  if (serverStatusIndicator) {
+    serverStatusIndicator.querySelector('.status-text').innerText = "STARTING...";
+  }
 
-    try {
-        // Spawn 'go run .' in the backend directory
-        // Note: Command definition depends on permissions configuration in capabilities
-        const command = Command.create('go', ['run', '.'], { cwd: '../backend+logic' }); // Adjust CWD if needed, relative to app execution? 
-        // Actually, CWD support in Tauri shell plugin might be restricted or relative to bundle. 
-        // For 'run', usually absolute config is safer. 
-        // Let's assume the user runs this from project root or standardized path.
-        // If 'cwd' isn't supported easily, we might need a better strategy.
-        // BUT, given the scope, let's try assuming the sidecar approach is complex and just try spawning it.
-        // Better yet, for this dev environment, let's assume `go` is in path.
-        // Wait, `cwd` option in Command.create is not standard in v1/v2 JS API directly without specific config.
-        // Let's rely on the user having started it MANUALLY first as fallback, or try to run it.
+  try {
+    // Spawn 'go run .' in the backend directory
+    // Note: Command definition depends on permissions configuration in capabilities
+    const command = Command.create('go', ['run', '.'], { cwd: '../backend+logic' }); // Adjust CWD if needed, relative to app execution? 
+    // Actually, CWD support in Tauri shell plugin might be restricted or relative to bundle. 
+    // For 'run', usually absolute config is safer. 
+    // Let's assume the user runs this from project root or standardized path.
+    // If 'cwd' isn't supported easily, we might need a better strategy.
+    // BUT, given the scope, let's try assuming the sidecar approach is complex and just try spawning it.
+    // Better yet, for this dev environment, let's assume `go` is in path.
+    // Wait, `cwd` option in Command.create is not standard in v1/v2 JS API directly without specific config.
+    // Let's rely on the user having started it MANUALLY first as fallback, or try to run it.
 
-        // REVISION: The safe bet for this environment is to instruct the user if auto-start fails.
-        // But I will try to spawn it.
+    // REVISION: The safe bet for this environment is to instruct the user if auto-start fails.
+    // But I will try to spawn it.
 
-        // For development, we'll try to run "go run ." inside "backend+logic".
-        // The sidecar is robust but complex to setup now.
-        // I will rely on the user-instruction I added: "Ensure Server is ONLINE".
+    // For development, we'll try to run "go run ." inside "backend+logic".
+    // The sidecar is robust but complex to setup now.
+    // I will rely on the user-instruction I added: "Ensure Server is ONLINE".
 
-        // Let's just try to update status.
-        checkBackendHealth();
-    } catch (e) {
-        console.error("Failed to auto-start backend:", e);
-    }
+    // Let's just try to update status.
+    checkBackendHealth();
+  } catch (e) {
+    console.error("Failed to auto-start backend:", e);
+  }
 }
 
 // Polling for health when on admin page
@@ -786,282 +786,282 @@ const joinError = document.getElementById('join-error');
 
 // Initialize Server IP input
 if (joinServerIpInput) {
-    joinServerIpInput.value = getServerIp();
+  joinServerIpInput.value = getServerIp();
 }
 
 if (btnStudent) {
-    btnStudent.addEventListener('click', () => {
-        if (landingContainer && joinContainer) {
-            landingContainer.classList.add('fade-out');
-            joinContainer.classList.remove('fade-out');
-            setTimeout(() => joinNameInput.focus(), 100);
-        }
-    });
+  btnStudent.addEventListener('click', () => {
+    if (landingContainer && joinContainer) {
+      landingContainer.classList.add('fade-out');
+      joinContainer.classList.remove('fade-out');
+      setTimeout(() => joinNameInput.focus(), 100);
+    }
+  });
 }
 
 if (joinBackBtn) {
-    joinBackBtn.addEventListener('click', () => {
-        if (landingContainer && joinContainer) {
-            joinContainer.classList.add('fade-out');
-            landingContainer.classList.remove('fade-out');
-        }
-    });
+  joinBackBtn.addEventListener('click', () => {
+    if (landingContainer && joinContainer) {
+      joinContainer.classList.add('fade-out');
+      landingContainer.classList.remove('fade-out');
+    }
+  });
 }
 
 function showJoinError(msg) {
-    if (!joinError) return;
-    joinError.innerText = msg;
-    joinError.style.display = 'block';
-    joinError.classList.add('error'); // Trigger shake
-    setTimeout(() => {
-        joinError.classList.remove('error');
-    }, 500);
-    // Hide after 3s? Maybe keep it until user types.
+  if (!joinError) return;
+  joinError.innerText = msg;
+  joinError.style.display = 'block';
+  joinError.classList.add('error'); // Trigger shake
+  setTimeout(() => {
+    joinError.classList.remove('error');
+  }, 500);
+  // Hide after 3s? Maybe keep it until user types.
 }
 
 async function handleJoinRoom() {
-    const name = joinNameInput.value.trim();
-    const regNo = joinRegNoInput.value.trim();
-    const roomId = joinRoomIdInput.value.trim();
+  const name = joinNameInput.value.trim();
+  const regNo = joinRegNoInput.value.trim();
+  const roomId = joinRoomIdInput.value.trim();
 
-    const serverIp = joinServerIpInput ? joinServerIpInput.value.trim() : getServerIp();
+  const serverIp = joinServerIpInput ? joinServerIpInput.value.trim() : getServerIp();
 
-    if (!name || !regNo || !roomId) {
-        showJoinError("Please fill in all fields.");
-        return;
+  if (!name || !regNo || !roomId) {
+    showJoinError("Please fill in all fields.");
+    return;
+  }
+
+  // Save the IP for future use
+  if (serverIp) {
+    saveServerIp(serverIp);
+  }
+
+  joinSubmitBtn.innerText = "Joining...";
+  joinSubmitBtn.disabled = true;
+  joinError.style.display = 'none';
+
+  console.log(`[DEBUG] Attempting to join room: ${roomId} as ${name} (${regNo})`);
+  console.log(`[DEBUG] API URL: ${getStudentApiBase()}/join-room`);
+
+  try {
+    const res = await fetch(`${getStudentApiBase()}/join-room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: roomId,
+        username: name,
+        regno: regNo,
+        user_id: regNo // Using RegNo as ID for simplicity
+      })
+    });
+
+    console.log(`[DEBUG] Response Status: ${res.status}`);
+    const data = await res.json();
+    console.log(`[DEBUG] Response Data:`, data);
+
+    if (res.ok) {
+      // Success!
+      // console.log("Joined!", data);
+
+      isStudentSessionActive = true;
+
+      // Navigate to IDE
+      joinContainer.classList.add('fade-out');
+
+      // Adjust IDE layout
+      setTimeout(() => {
+        if (shell && shell.fitAddon) shell.fitAddon.fit();
+        if (monacoEditor) monacoEditor.layout();
+      }, 300);
+
+      // TODO: Update UI with session info if needed
+    } else {
+      showJoinError(data.message || "Failed to join room");
     }
-
-    // Save the IP for future use
-    if (serverIp) {
-        saveServerIp(serverIp);
-    }
-
-    joinSubmitBtn.innerText = "Joining...";
-    joinSubmitBtn.disabled = true;
-    joinError.style.display = 'none';
-
-    console.log(`[DEBUG] Attempting to join room: ${roomId} as ${name} (${regNo})`);
-    console.log(`[DEBUG] API URL: ${getStudentApiBase()}/join-room`);
-
-    try {
-        const res = await fetch(`${getStudentApiBase()}/join-room`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                room_id: roomId,
-                username: name,
-                regno: regNo,
-                user_id: regNo // Using RegNo as ID for simplicity
-            })
-        });
-
-        console.log(`[DEBUG] Response Status: ${res.status}`);
-        const data = await res.json();
-        console.log(`[DEBUG] Response Data:`, data);
-
-        if (res.ok) {
-            // Success!
-            // console.log("Joined!", data);
-
-            isStudentSessionActive = true;
-
-            // Navigate to IDE
-            joinContainer.classList.add('fade-out');
-
-            // Adjust IDE layout
-            setTimeout(() => {
-                if (shell && shell.fitAddon) shell.fitAddon.fit();
-                if (monacoEditor) monacoEditor.layout();
-            }, 300);
-
-            // TODO: Update UI with session info if needed
-        } else {
-            showJoinError(data.message || "Failed to join room");
-        }
-    } catch (e) {
-        console.error("[DEBUG] Join Room Error Details:", e);
-        showJoinError("Server unreachable. Ensure Admin has started the exam server.");
-    } finally {
-        joinSubmitBtn.innerText = "Join Session";
-        joinSubmitBtn.disabled = false;
-    }
+  } catch (e) {
+    console.error("[DEBUG] Join Room Error Details:", e);
+    showJoinError("Server unreachable. Ensure Admin has started the exam server.");
+  } finally {
+    joinSubmitBtn.innerText = "Join Session";
+    joinSubmitBtn.disabled = false;
+  }
 }
 
 if (joinSubmitBtn) {
-    joinSubmitBtn.onclick = handleJoinRoom;
+  joinSubmitBtn.onclick = handleJoinRoom;
 }
 
 // Allow Enter key to submit in last input
 if (joinRoomIdInput) {
-    joinRoomIdInput.onkeydown = (e) => {
-        if (e.key === 'Enter') handleJoinRoom();
-    };
+  joinRoomIdInput.onkeydown = (e) => {
+    if (e.key === 'Enter') handleJoinRoom();
+  };
 }
 
 if (btnAdmin) {
-    btnAdmin.addEventListener('click', async () => {
-        if (landingContainer && adminContainer) {
-            landingContainer.classList.add('fade-out');
-            adminContainer.classList.remove('fade-out');
+  btnAdmin.addEventListener('click', async () => {
+    if (landingContainer && adminContainer) {
+      landingContainer.classList.add('fade-out');
+      adminContainer.classList.remove('fade-out');
 
-            // Start polling (health only, rooms via WS)
-            healthInterval = setInterval(checkBackendHealth, 5000);
+      // Start polling (health only, rooms via WS)
+      healthInterval = setInterval(checkBackendHealth, 5000);
 
-            // Fetch initial state
-            fetchRooms();
+      // Fetch initial state
+      fetchRooms();
 
-            // Connect Realtime
-            initWebSocket();
-        }
-    });
+      // Connect Realtime
+      initWebSocket();
+    }
+  });
 }
 
 if (adminBackBtn) {
-    adminBackBtn.addEventListener('click', () => {
-        if (landingContainer && adminContainer) {
-            adminContainer.classList.add('fade-out');
-            landingContainer.classList.remove('fade-out');
-            clearInterval(healthInterval);
-        }
-    });
+  adminBackBtn.addEventListener('click', () => {
+    if (landingContainer && adminContainer) {
+      adminContainer.classList.add('fade-out');
+      landingContainer.classList.remove('fade-out');
+      clearInterval(healthInterval);
+    }
+  });
 }
 
 
 // Process Shield Monitor
 if (monitorShieldBtn) {
-    monitorShieldBtn.onclick = async () => {
-        monitorShieldBtn.innerText = "Scanning...";
-        shieldStatusText.innerText = "Scanning processes...";
+  monitorShieldBtn.onclick = async () => {
+    monitorShieldBtn.innerText = "Scanning...";
+    shieldStatusText.innerText = "Scanning processes...";
 
-        try {
-            // Process Shield runs LOCALLY on the machine
-            const res = await fetch(`${getAdminApiBase()}/scan`);
-            const data = await res.json();
+    try {
+      // Process Shield runs LOCALLY on the machine
+      const res = await fetch(`${getAdminApiBase()}/scan`);
+      const data = await res.json();
 
-            if (data.forbidden_found) {
-                shieldStatusText.innerText = `⚠️ REMOVED: ${data.processes.join(', ')}`;
-                shieldStatusText.style.color = 'var(--accent-warning)';
-            } else {
-                shieldStatusText.innerText = "✅ System Clean";
-                shieldStatusText.style.color = 'var(--accent-primary)';
-            }
-        } catch (e) {
-            shieldStatusText.innerText = "❌ Connection Failed";
-            shieldStatusText.style.color = 'var(--accent-danger)';
-        }
+      if (data.forbidden_found) {
+        shieldStatusText.innerText = `⚠️ REMOVED: ${data.processes.join(', ')}`;
+        shieldStatusText.style.color = 'var(--accent-warning)';
+      } else {
+        shieldStatusText.innerText = "✅ System Clean";
+        shieldStatusText.style.color = 'var(--accent-primary)';
+      }
+    } catch (e) {
+      shieldStatusText.innerText = "❌ Connection Failed";
+      shieldStatusText.style.color = 'var(--accent-danger)';
+    }
 
-        setTimeout(() => monitorShieldBtn.innerText = "Monitor", 2000);
-    };
+    setTimeout(() => monitorShieldBtn.innerText = "Monitor", 2000);
+  };
 }
 
 // Room Management
 async function fetchRooms() {
-    const tbody = document.getElementById('rooms-list-body');
-    const loading = document.getElementById('rooms-loading');
-    const empty = document.getElementById('rooms-empty');
+  const tbody = document.getElementById('rooms-list-body');
+  const loading = document.getElementById('rooms-loading');
+  const empty = document.getElementById('rooms-empty');
 
-    tbody.innerHTML = '';
-    loading.style.display = 'block';
-    empty.style.display = 'none';
+  tbody.innerHTML = '';
+  loading.style.display = 'block';
+  empty.style.display = 'none';
 
-    try {
-        const res = await fetch(`${getAdminApiBase()}/get-all-rooms`);
-        const rooms = await res.json();
+  try {
+    const res = await fetch(`${getAdminApiBase()}/get-all-rooms`);
+    const rooms = await res.json();
 
-        loading.style.display = 'none';
+    loading.style.display = 'none';
 
-        if (!rooms || rooms.length === 0) {
-            empty.style.display = 'block';
-            return;
-        }
+    if (!rooms || rooms.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
 
-        rooms.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.className = 'room-row';
-            tr.dataset.id = r.id; // Store ID for click
-            tr.style.cursor = 'pointer';
+    rooms.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.className = 'room-row';
+      tr.dataset.id = r.id; // Store ID for click
+      tr.style.cursor = 'pointer';
 
-            // Format time
-            const startTime = r.start_time ? new Date(r.start_time).toLocaleTimeString() : '-';
+      // Format time
+      const startTime = r.start_time ? new Date(r.start_time).toLocaleTimeString() : '-';
 
-            let statusBadge = '';
-            if (r.active_status === 0) statusBadge = '<span class="status-badge status-waiting">Waiting</span>';
-            else if (r.active_status === 1) statusBadge = '<span class="status-badge status-active">Active</span>';
-            else statusBadge = '<span class="status-badge">Finished</span>';
+      let statusBadge = '';
+      if (r.active_status === 0) statusBadge = '<span class="status-badge status-waiting">Waiting</span>';
+      else if (r.active_status === 1) statusBadge = '<span class="status-badge status-active">Active</span>';
+      else statusBadge = '<span class="status-badge">Finished</span>';
 
-            tr.innerHTML = `
+      tr.innerHTML = `
                 <td class="mono" style="font-weight: 700; color: var(--accent-primary);">${r.id}</td>
                 <td>${r.session_name}</td>
                 <td>${statusBadge}</td>
                 <td>${startTime}</td>
                 <td><button class="small-btn">View</button></td>
             `;
-            tbody.appendChild(tr);
-        });
+      tbody.appendChild(tr);
+    });
 
-        bindRoomListEvents();
+    bindRoomListEvents();
 
-    } catch (e) {
-        console.error("Failed to fetch rooms:", e);
-        loading.style.display = 'none';
-        tbody.innerHTML = `<tr><td colspan="5" style="color: var(--accent-danger); text-align: center;">Failed to load rooms. Is backend running?</td></tr>`;
-    }
+  } catch (e) {
+    console.error("Failed to fetch rooms:", e);
+    loading.style.display = 'none';
+    tbody.innerHTML = `<tr><td colspan="5" style="color: var(--accent-danger); text-align: center;">Failed to load rooms. Is backend running?</td></tr>`;
+  }
 }
 
 if (refreshRoomsBtn) {
-    refreshRoomsBtn.onclick = fetchRooms;
+  refreshRoomsBtn.onclick = fetchRooms;
 }
 
 // Create Room Modal
 if (createRoomBtn) {
-    createRoomBtn.onclick = () => {
-        createRoomDialog.style.display = 'flex';
-    };
+  createRoomBtn.onclick = () => {
+    createRoomDialog.style.display = 'flex';
+  };
 }
 
 if (createRoomClose) {
-    createRoomClose.onclick = () => {
-        createRoomDialog.style.display = 'none';
-    };
+  createRoomClose.onclick = () => {
+    createRoomDialog.style.display = 'none';
+  };
 }
 
 if (crSubmitBtn) {
-    crSubmitBtn.onclick = async () => {
-        const name = document.getElementById('cr-name').value;
-        const host = document.getElementById('cr-host').value;
-        const key = document.getElementById('cr-key').value;
+  crSubmitBtn.onclick = async () => {
+    const name = document.getElementById('cr-name').value;
+    const host = document.getElementById('cr-host').value;
+    const key = document.getElementById('cr-key').value;
 
-        if (!name || !host || !key) {
-            alert("Please fill all fields");
-            return;
-        }
+    if (!name || !host || !key) {
+      alert("Please fill all fields");
+      return;
+    }
 
-        try {
-            const res = await fetch(`${getAdminApiBase()}/create-room`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    session_name: name,
-                    host_id: host,
-                    admin_key: key
-                })
-            });
+    try {
+      const res = await fetch(`${getAdminApiBase()}/create-room`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_name: name,
+          host_id: host,
+          admin_key: key
+        })
+      });
 
-            if (res.ok) {
-                createRoomDialog.style.display = 'none';
-                fetchRooms();
-                // Clear inputs
-                document.getElementById('cr-name').value = '';
-                document.getElementById('cr-host').value = '';
-                document.getElementById('cr-key').value = '';
-            } else {
-                const err = await res.text();
-                alert("Failed to create room: " + err);
-            }
-        } catch (e) {
-            alert("Error creating room: " + e);
-        }
-    };
+      if (res.ok) {
+        createRoomDialog.style.display = 'none';
+        fetchRooms();
+        // Clear inputs
+        document.getElementById('cr-name').value = '';
+        document.getElementById('cr-host').value = '';
+        document.getElementById('cr-key').value = '';
+      } else {
+        const err = await res.text();
+        alert("Failed to create room: " + err);
+      }
+    } catch (e) {
+      alert("Error creating room: " + e);
+    }
+  };
 }
 
 // --- Room Details Logic ---
@@ -1069,109 +1069,109 @@ let currentRoomId = null;
 let roomPollInterval = null;
 
 async function openRoomDetails(roomId) {
-    currentRoomId = roomId;
-    const detailsView = document.getElementById('room-details-view');
-    detailsView.classList.add('active');
+  currentRoomId = roomId;
+  const detailsView = document.getElementById('room-details-view');
+  detailsView.classList.add('active');
 
-    // Initial fetch
-    await fetchRoomDetails();
+  // Initial fetch
+  await fetchRoomDetails();
 
-    // Subscribe to real-time updates for THIS room
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-            action: "subscribe_room",
-            room_id: roomId
-        }));
-    }
+  // Subscribe to real-time updates for THIS room
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      action: "subscribe_room",
+      room_id: roomId
+    }));
+  }
 }
 
 function closeRoomDetails() {
-    const detailsView = document.getElementById('room-details-view');
-    detailsView.classList.remove('active');
+  const detailsView = document.getElementById('room-details-view');
+  detailsView.classList.remove('active');
 
-    // Unsubscribe
-    if (ws && ws.readyState === WebSocket.OPEN && currentRoomId) {
-        ws.send(JSON.stringify({
-            action: "unsubscribe_room",
-            room_id: currentRoomId
-        }));
-    }
+  // Unsubscribe
+  if (ws && ws.readyState === WebSocket.OPEN && currentRoomId) {
+    ws.send(JSON.stringify({
+      action: "unsubscribe_room",
+      room_id: currentRoomId
+    }));
+  }
 
-    currentRoomId = null;
-    fetchRooms(); // Refresh main list
+  currentRoomId = null;
+  fetchRooms(); // Refresh main list
 }
 
 document.getElementById('rd-back-btn').addEventListener('click', closeRoomDetails);
 
 // Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        // Deactivate all
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => {
-            c.style.display = 'none';
-            c.classList.remove('active');
-        });
-
-        // Activate current
-        btn.classList.add('active');
-        const tabId = btn.dataset.tab;
-        const content = document.getElementById(`tab-${tabId}`);
-        content.style.display = 'block';
-        content.classList.add('active');
+  btn.addEventListener('click', () => {
+    // Deactivate all
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => {
+      c.style.display = 'none';
+      c.classList.remove('active');
     });
+
+    // Activate current
+    btn.classList.add('active');
+    const tabId = btn.dataset.tab;
+    const content = document.getElementById(`tab-${tabId}`);
+    content.style.display = 'block';
+    content.classList.add('active');
+  });
 });
 
 async function fetchRoomDetails() {
-    if (!currentRoomId) return;
+  if (!currentRoomId) return;
 
-    try {
-        const res = await fetch(`${API_BASE}/get-room?room_id=${currentRoomId}`);
-        if (!res.ok) return;
-        const room = await res.json();
+  try {
+    const res = await fetch(`${API_BASE}/get-room?room_id=${currentRoomId}`);
+    if (!res.ok) return;
+    const room = await res.json();
 
-        // Update Header
-        document.getElementById('rd-title').innerText = room.session_name;
-        const badge = document.getElementById('rd-status-badge');
-        updateBadge(badge, room.active_status);
+    // Update Header
+    document.getElementById('rd-title').innerText = room.session_name;
+    const badge = document.getElementById('rd-status-badge');
+    updateBadge(badge, room.active_status);
 
-        // Update Settings Form (only if not focused)
-        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-            document.getElementById('rd-name').value = room.session_name;
-            document.getElementById('rd-duration').value = room.time_allocated ? (room.time_allocated / 60000000000) : 0; // ns to min? Go Duration is ns. wait.
-            // Go JSON duration is usually represented as string "1h2m" or similar if generic json marshal, but here it might be ns number.
-            // Let's check Go struct. It treats Duration as int64 ns often in stdlib? No, standard json marshal for time.Duration is integer ns.
-            // Actually standard json marshal for duration is just number of nanoseconds.
-            // 1 min = 60 * 1000 * 1000 * 1000 = 6e10.
-            document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
+    // Update Settings Form (only if not focused)
+    if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      document.getElementById('rd-name').value = room.session_name;
+      document.getElementById('rd-duration').value = room.time_allocated ? (room.time_allocated / 60000000000) : 0; // ns to min? Go Duration is ns. wait.
+      // Go JSON duration is usually represented as string "1h2m" or similar if generic json marshal, but here it might be ns number.
+      // Let's check Go struct. It treats Duration as int64 ns often in stdlib? No, standard json marshal for time.Duration is integer ns.
+      // Actually standard json marshal for duration is just number of nanoseconds.
+      // 1 min = 60 * 1000 * 1000 * 1000 = 6e10.
+      document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
 
-            document.getElementById('rd-status-select').value = room.active_status;
+      document.getElementById('rd-status-select').value = room.active_status;
 
-            // Update Sets
-            const container = document.getElementById('sets-container');
-            container.innerHTML = '';
-            if (room.sets && Object.keys(room.sets).length > 0) {
-                for (const [key, val] of Object.entries(room.sets)) {
-                    addSetRow(key, val);
-                }
-            } else {
-                // Add one empty row by default if empty
-                addSetRow();
-            }
+      // Update Sets
+      const container = document.getElementById('sets-container');
+      container.innerHTML = '';
+      if (room.sets && Object.keys(room.sets).length > 0) {
+        for (const [key, val] of Object.entries(room.sets)) {
+          addSetRow(key, val);
         }
+      } else {
+        // Add one empty row by default if empty
+        addSetRow();
+      }
+    }
 
-        // Update Students List
-        const tbody = document.getElementById('rd-students-body');
-        const empty = document.getElementById('rd-students-empty');
-        tbody.innerHTML = '';
+    // Update Students List
+    const tbody = document.getElementById('rd-students-body');
+    const empty = document.getElementById('rd-students-empty');
+    tbody.innerHTML = '';
 
-        if (!room.students || room.students.length === 0) {
-            empty.style.display = 'block';
-        } else {
-            empty.style.display = 'none';
-            room.students.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+    if (!room.students || room.students.length === 0) {
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      room.students.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
                     <td>${s.regno}</td>
                     <td>${s.username || 'N/A'}</td>
                     <td>${getStatusBadgeHTML(s.active_status)}</td>
@@ -1180,231 +1180,231 @@ async function fetchRoomDetails() {
                         <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
                     </td>
                 `;
-                tbody.appendChild(tr);
-            });
-        }
-
-    } catch (e) {
-        console.error("Fetch details error:", e);
+        tbody.appendChild(tr);
+      });
     }
+
+  } catch (e) {
+    console.error("Fetch details error:", e);
+  }
 }
 
 function addSetRow(name = '', url = '') {
-    const container = document.getElementById('sets-container');
-    const div = document.createElement('div');
-    div.className = 'set-row';
-    div.innerHTML = `
+  const container = document.getElementById('sets-container');
+  const div = document.createElement('div');
+  div.className = 'set-row';
+  div.innerHTML = `
         <input type="text" class="admin-input set-name" placeholder="Set Name (e.g. Set A)" value="${name}">
         <input type="text" class="admin-input set-url" placeholder="Questions URL" value="${url}">
         <div class="remove-set-btn" title="Remove">✕</div>
     `;
-    div.querySelector('.remove-set-btn').onclick = () => div.remove();
-    container.appendChild(div);
+  div.querySelector('.remove-set-btn').onclick = () => div.remove();
+  container.appendChild(div);
 }
 
 document.getElementById('add-set-btn').addEventListener('click', () => addSetRow());
 
 // Save Changes
 document.getElementById('rd-save-btn').addEventListener('click', async () => {
-    if (!currentRoomId) return;
-    const name = document.getElementById('rd-name').value;
-    const durationMins = parseInt(document.getElementById('rd-duration').value);
-    const status = parseInt(document.getElementById('rd-status-select').value);
-    const key = document.getElementById('rd-key').value;
+  if (!currentRoomId) return;
+  const name = document.getElementById('rd-name').value;
+  const durationMins = parseInt(document.getElementById('rd-duration').value);
+  const status = parseInt(document.getElementById('rd-status-select').value);
+  const key = document.getElementById('rd-key').value;
 
-    // Collect Sets
-    const sets = {};
-    document.querySelectorAll('.set-row').forEach(row => {
-        const setName = row.querySelector('.set-name').value.trim();
-        const setUrl = row.querySelector('.set-url').value.trim();
-        if (setName && setUrl) {
-            sets[setName] = setUrl;
-        }
+  // Collect Sets
+  const sets = {};
+  document.querySelectorAll('.set-row').forEach(row => {
+    const setName = row.querySelector('.set-name').value.trim();
+    const setUrl = row.querySelector('.set-url').value.trim();
+    if (setName && setUrl) {
+      sets[setName] = setUrl;
+    }
+  });
+
+  if (Object.keys(sets).length === 0) {
+    // Optional warning or just null
+  }
+
+  if (!key) {
+    alert("Admin Key is required to save changes.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${getAdminApiBase()}/update-room`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: currentRoomId,
+        admin_key: key,
+        session_name: name,
+        time_allocated: durationMins * 60000000000,
+        active_status: status,
+        sets: sets
+      })
     });
 
-    if (Object.keys(sets).length === 0) {
-        // Optional warning or just null
+    if (res.ok) {
+      alert("Changes saved!");
+      fetchRoomDetails();
+    } else {
+      alert("Failed: " + await res.text());
     }
-
-    if (!key) {
-        alert("Admin Key is required to save changes.");
-        return;
-    }
-
-    try {
-        const res = await fetch(`${getAdminApiBase()}/update-room`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                room_id: currentRoomId,
-                admin_key: key,
-                session_name: name,
-                time_allocated: durationMins * 60000000000,
-                active_status: status,
-                sets: sets
-            })
-        });
-
-        if (res.ok) {
-            alert("Changes saved!");
-            fetchRoomDetails();
-        } else {
-            alert("Failed: " + await res.text());
-        }
-    } catch (e) {
-        alert("Error: " + e);
-    }
+  } catch (e) {
+    alert("Error: " + e);
+  }
 });
 
 function getStatusBadgeHTML(status) {
-    // 0: Online, 1: Offline/Kick, 2: Submitted, 3: Flagged
-    // Based on UStatusEnum in backend
-    switch (status) {
-        case 0: return '<span class="status-badge status-active">Online</span>';
-        case 1: return '<span class="status-badge" style="color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.1)">Offline</span>';
-        case 2: return '<span class="status-badge" style="color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.1)">Submitted</span>';
-        case 3: return '<span class="status-badge" style="color:#f59e0b; border-color:#f59e0b; background:rgba(245,158,11,0.1)">Flagged</span>';
-        default: return 'Unknown';
-    }
+  // 0: Online, 1: Offline/Kick, 2: Submitted, 3: Flagged
+  // Based on UStatusEnum in backend
+  switch (status) {
+    case 0: return '<span class="status-badge status-active">Online</span>';
+    case 1: return '<span class="status-badge" style="color:#ef4444; border-color:#ef4444; background:rgba(239,68,68,0.1)">Offline</span>';
+    case 2: return '<span class="status-badge" style="color:#10b981; border-color:#10b981; background:rgba(16,185,129,0.1)">Submitted</span>';
+    case 3: return '<span class="status-badge" style="color:#f59e0b; border-color:#f59e0b; background:rgba(245,158,11,0.1)">Flagged</span>';
+    default: return 'Unknown';
+  }
 }
 
 function updateBadge(el, status) {
-    // 0: Waiting, 1: Active, 2: NetworkLoss, 3: Paused, 4: Complete
-    el.className = 'status-badge';
-    if (status === 0) { el.classList.add('status-waiting'); el.innerText = 'WAITING'; }
-    else if (status === 1) { el.classList.add('status-active'); el.innerText = 'ACTIVE'; }
-    else if (status === 3) { el.classList.add('status-waiting'); el.innerText = 'PAUSED'; el.style.color = '#f59e0b'; }
-    else if (status === 4) { el.classList.add('status-active'); el.innerText = 'COMPLETE'; el.style.color = '#3b82f6'; }
+  // 0: Waiting, 1: Active, 2: NetworkLoss, 3: Paused, 4: Complete
+  el.className = 'status-badge';
+  if (status === 0) { el.classList.add('status-waiting'); el.innerText = 'WAITING'; }
+  else if (status === 1) { el.classList.add('status-active'); el.innerText = 'ACTIVE'; }
+  else if (status === 3) { el.classList.add('status-waiting'); el.innerText = 'PAUSED'; el.style.color = '#f59e0b'; }
+  else if (status === 4) { el.classList.add('status-active'); el.innerText = 'COMPLETE'; el.style.color = '#3b82f6'; }
 }
 
 // Expose for onClick
 window.moderateStudent = async (userId, status) => {
-    const key = prompt("Enter Admin Key to Confirm Action:");
-    if (!key) return;
+  const key = prompt("Enter Admin Key to Confirm Action:");
+  if (!key) return;
 
-    try {
-        await fetch(`${getAdminApiBase()}/admin/update-status`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                room_id: currentRoomId,
-                user_id: userId,
-                admin_key: key,
-                status: status
-            })
-        });
-        fetchRoomDetails();
-    } catch (e) {
-        alert(e);
-    }
+  try {
+    await fetch(`${getAdminApiBase()}/admin/update-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: currentRoomId,
+        user_id: userId,
+        admin_key: key,
+        status: status
+      })
+    });
+    fetchRoomDetails();
+  } catch (e) {
+    alert(e);
+  }
 };
 
 // Update Room List Click Handler
 function bindRoomListEvents() {
-    document.querySelectorAll('.room-row').forEach(row => {
-        row.addEventListener('click', () => {
-            const id = row.dataset.id;
-            openRoomDetails(id);
-        });
+  document.querySelectorAll('.room-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.id;
+      openRoomDetails(id);
     });
+  });
 }
 
 // --- WebSocket Logic ---
 function initWebSocket() {
-    if (ws) return; // Already initialized
+  if (ws) return; // Already initialized
 
-    // WebSocket for Admin should connect to Localhost
-    // But wait, if we are in Student View, we might need WS to remote.
-    // initWebSocket is called by Admin Panel (line 889).
-    // It is NOT called by Student Join explicitly?
-    // openRoomDetails calls `ws.send`.
-    // Student flow: handleJoinRoom -> Success -> ... wait, Student doesn't init WS?
-    // Student notifications logic is missing in `handleJoinRoom`?
-    // Ah, `handleJoinRoom` just posts. Realtime updates for student?
-    // The Student Portal in this code seems to be `handleJoinRoom` which just sends a POST.
-    // Does the student see a waiting room?
-    // The code mainly focuses on Admin Panel.
-    // If Student Portal needs WS, it should be initialized with StudentBase.
-    // Current `initWebSocket` is called only in Admin interactions.
-    ws = new WebSocket(getAdminWsBase());
+  // WebSocket for Admin should connect to Localhost
+  // But wait, if we are in Student View, we might need WS to remote.
+  // initWebSocket is called by Admin Panel (line 889).
+  // It is NOT called by Student Join explicitly?
+  // openRoomDetails calls `ws.send`.
+  // Student flow: handleJoinRoom -> Success -> ... wait, Student doesn't init WS?
+  // Student notifications logic is missing in `handleJoinRoom`?
+  // Ah, `handleJoinRoom` just posts. Realtime updates for student?
+  // The Student Portal in this code seems to be `handleJoinRoom` which just sends a POST.
+  // Does the student see a waiting room?
+  // The code mainly focuses on Admin Panel.
+  // If Student Portal needs WS, it should be initialized with StudentBase.
+  // Current `initWebSocket` is called only in Admin interactions.
+  ws = new WebSocket(getAdminWsBase());
 
-    ws.onopen = () => {
-        console.log("WS Connected");
-        wsRetries = 0;
-        updateServerStatus(true);
+  ws.onopen = () => {
+    console.log("WS Connected");
+    wsRetries = 0;
+    updateServerStatus(true);
 
-        // Subscribe to All Rooms List by default if we are in admin view
-        if (!adminContainer.classList.contains('fade-out')) {
-            ws.send(JSON.stringify({ action: "subscribe_all" }));
+    // Subscribe to All Rooms List by default if we are in admin view
+    if (!adminContainer.classList.contains('fade-out')) {
+      ws.send(JSON.stringify({ action: "subscribe_all" }));
+    }
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "ROOM_LIST_UPDATE") {
+        fetchRooms();
+      } else if (msg.type === "ROOM_UPDATE") {
+        // If the payload is the room object, we can update UI directly?
+        // Or just re-fetch to be safe/simple.
+        // The payload IS the room object.
+        const updatedRoom = msg.payload;
+
+        // If we are looking at this room, update details
+        if (currentRoomId && updatedRoom.id === currentRoomId) {
+          // Optimized: direct update if payload has data, else fetch
+          if (updatedRoom) {
+            updateRoomDetailsUI(updatedRoom);
+          } else {
+            fetchRoomDetails();
+          }
         }
-    };
+      }
 
-    ws.onmessage = (event) => {
-        try {
-            const msg = JSON.parse(event.data);
+    } catch (e) {
+      console.error("WS Msg Error:", e);
+    }
+  };
 
-            if (msg.type === "ROOM_LIST_UPDATE") {
-                fetchRooms();
-            } else if (msg.type === "ROOM_UPDATE") {
-                // If the payload is the room object, we can update UI directly?
-                // Or just re-fetch to be safe/simple.
-                // The payload IS the room object.
-                const updatedRoom = msg.payload;
+  ws.onclose = () => {
+    console.log("WS Closed");
+    ws = null;
+    updateServerStatus(false);
 
-                // If we are looking at this room, update details
-                if (currentRoomId && updatedRoom.id === currentRoomId) {
-                    // Optimized: direct update if payload has data, else fetch
-                    if (updatedRoom) {
-                        updateRoomDetailsUI(updatedRoom);
-                    } else {
-                        fetchRoomDetails();
-                    }
-                }
-            }
+    // Retry logic
+    if (wsRetries < 5) {
+      wsRetries++;
+      setTimeout(initWebSocket, 2000);
+    }
+  };
 
-        } catch (e) {
-            console.error("WS Msg Error:", e);
-        }
-    };
-
-    ws.onclose = () => {
-        console.log("WS Closed");
-        ws = null;
-        updateServerStatus(false);
-
-        // Retry logic
-        if (wsRetries < 5) {
-            wsRetries++;
-            setTimeout(initWebSocket, 2000);
-        }
-    };
-
-    ws.onerror = (e) => {
-        console.error("WS Error:", e);
-    };
+  ws.onerror = (e) => {
+    console.error("WS Error:", e);
+  };
 }
 
 // Refactored UI update for reuse
 function updateRoomDetailsUI(room) {
-    if (!room) return;
+  if (!room) return;
 
-    // Update Header
-    document.getElementById('rd-title').innerHTML = `${room.session_name} <span style="font-family:monospace; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:8px;">${room.id}</span>`;
-    const badge = document.getElementById('rd-status-badge');
-    updateBadge(badge, room.active_status);
+  // Update Header
+  document.getElementById('rd-title').innerHTML = `${room.session_name} <span style="font-family:monospace; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8em; margin-left:8px;">${room.id}</span>`;
+  const badge = document.getElementById('rd-status-badge');
+  updateBadge(badge, room.active_status);
 
-    // Update Students List
-    const tbody = document.getElementById('rd-students-body');
-    const empty = document.getElementById('rd-students-empty');
-    tbody.innerHTML = '';
+  // Update Students List
+  const tbody = document.getElementById('rd-students-body');
+  const empty = document.getElementById('rd-students-empty');
+  tbody.innerHTML = '';
 
-    if (!room.students || room.students.length === 0) {
-        empty.style.display = 'block';
-    } else {
-        empty.style.display = 'none';
-        room.students.forEach(s => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
+  if (!room.students || room.students.length === 0) {
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    room.students.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
                 <td>${s.regno}</td>
                 <td>${s.username || 'N/A'}</td>
                 <td>${getStatusBadgeHTML(s.active_status)}</td>
@@ -1413,46 +1413,46 @@ function updateRoomDetailsUI(room) {
                     <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
                 </td>
             `;
-            tbody.appendChild(tr);
-        });
-    }
+      tbody.appendChild(tr);
+    });
+  }
 }
 
 // Hook fetchRoomDetails to use the shared UI updater
 const originalFetchDetails = fetchRoomDetails;
 fetchRoomDetails = async () => {
-    if (!currentRoomId) return;
-    try {
-        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
-        if (!res.ok) return;
-        const room = await res.json();
+  if (!currentRoomId) return;
+  try {
+    const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
+    if (!res.ok) return;
+    const room = await res.json();
 
-        // Settings form population remains here because it checks focus
-        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-            document.getElementById('rd-name').value = room.session_name;
-            document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
-            document.getElementById('rd-status-select').value = room.active_status;
+    // Settings form population remains here because it checks focus
+    if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      document.getElementById('rd-name').value = room.session_name;
+      document.getElementById('rd-duration').value = Math.round(room.time_allocated / 60000000000);
+      document.getElementById('rd-status-select').value = room.active_status;
 
-            const container = document.getElementById('sets-container');
-            container.innerHTML = '';
-            if (room.sets && Object.keys(room.sets).length > 0) {
-                for (const [key, val] of Object.entries(room.sets)) {
-                    addSetRow(key, val);
-                }
-            } else {
-                addSetRow();
-            }
+      const container = document.getElementById('sets-container');
+      container.innerHTML = '';
+      if (room.sets && Object.keys(room.sets).length > 0) {
+        for (const [key, val] of Object.entries(room.sets)) {
+          addSetRow(key, val);
         }
-
-        updateRoomDetailsUI(room);
-    } catch (e) {
-        console.error(e);
+      } else {
+        addSetRow();
+      }
     }
+
+    updateRoomDetailsUI(room);
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 // --- Activity Monitor: Tab Switch Tracking ---
 document.addEventListener("visibilitychange", () => {
-    if (document.hidden && isStudentSessionActive) {
-        addLogEntry('alert', '⚠️ Tab switch detected! Please return to the exam.');
-    }
+  if (document.hidden && isStudentSessionActive) {
+    addLogEntry('alert', '⚠️ Tab switch detected! Please return to the exam.');
+  }
 });
