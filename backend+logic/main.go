@@ -49,12 +49,22 @@ func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roomID := r.URL.Query().Get("room_id")
+	targetApps := forbiddenApps
+
+	if roomID != "" {
+		mu.RLock()
+		room, exists := rooms[roomID]
+		if exists && len(room.ForbiddenApps) > 0 {
+			targetApps = room.ForbiddenApps
+		}
+		mu.RUnlock()
+	}
+
 	// Run ps command to list all processes
-	// Using "-e" for standard syntax to select all processes
 	cmd := exec.Command("ps", "-e")
 	output, err := cmd.Output()
 	if err != nil {
-		// Fallback or error handling
 		fmt.Println("Error running ps:", err)
 		http.Error(w, "Failed to scan processes", http.StatusInternalServerError)
 		return
@@ -63,7 +73,7 @@ func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
 	outStr := strings.ToLower(string(output))
 	found := []string{}
 
-	for _, app := range forbiddenApps {
+	for _, app := range targetApps {
 		if strings.Contains(outStr, app) {
 			found = append(found, app)
 		}
@@ -77,10 +87,9 @@ func checkProcessesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
-
 func main() {
 	ip := GetLocalIP()
-	fmt.Printf("Starting Proctor Process Shield on :8081...\n")
+	fmt.Printf("Starting Proctor Backend on :8081...\n")
 	if ip != "" {
 		fmt.Printf("Admin: Share this IP with students: %s\n", ip)
 	}
@@ -98,6 +107,21 @@ func main() {
 	http.HandleFunc("/get-room", GetRoomHandler)
 	http.HandleFunc("/get-all-rooms", GetAllRoomsHandler)
 	http.HandleFunc("/update-room", UpdateRoomHandler)
+	http.HandleFunc("/sync-code", SyncCodeHandler)
+	http.HandleFunc("/student/snapshot", SnapshotHandler)
+	http.HandleFunc("/submit", SubmitHandler)
+	http.HandleFunc("/timer-info", TimerInfoHandler)
+
+	// Discovery endpoint - students can ping this to verify a proctor is running
+	http.HandleFunc("/discover", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"service": "proctor-alpha",
+			"ip":      ip,
+			"status":  "online",
+		})
+	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		enableCors(&w)

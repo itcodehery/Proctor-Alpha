@@ -1691,3 +1691,149 @@ fetchRoomDetails = async () => {
         renderAnalytics(room);
     } catch (e) { /* ignore */ }
 };
+
+// --- Exam Timer & Countdown ---
+let examTimerInterval = null;
+let hasSubmitted = false;
+
+function formatTimeRemaining(ms) {
+    if (ms <= 0) return '00:00';
+    const totalSec = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    if (hours > 0) {
+        return `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    }
+    return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+}
+
+async function pollTimer() {
+    if (!isStudentSessionActive || !currentRoomId || hasSubmitted) return;
+
+    try {
+        const res = await fetch(`${getAdminApiBase()}/timer-info?room_id=${currentRoomId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const remainingDisplay = document.getElementById('remaining-time-display');
+        const remainingText = document.getElementById('remaining-time-text');
+        const submitBtn = document.getElementById('submit-work-btn');
+
+        // Show submit button when session is active
+        if (data.status === 1) { // Active
+            submitBtn.style.display = 'inline-block';
+        }
+
+        // Handle room completed by admin
+        if (data.status === 4) { // Complete
+            if (!hasSubmitted) {
+                addLogEntry('alert', '⏰ Time is up! Auto-submitting your work...');
+                await submitWork();
+            }
+            return;
+        }
+
+        if (data.is_timer_active) {
+            remainingDisplay.style.display = 'flex';
+            remainingText.textContent = formatTimeRemaining(data.remaining_ms);
+
+            // Urgent warning when < 5 minutes
+            if (data.remaining_ms < 300000 && data.remaining_ms > 0) {
+                remainingDisplay.style.background = 'rgba(239,68,68,0.15)';
+                remainingDisplay.style.borderColor = 'rgba(239,68,68,0.3)';
+                remainingDisplay.style.color = '#ef4444';
+            }
+
+            // Auto-submit when timer hits zero
+            if (data.remaining_ms <= 0 && !hasSubmitted) {
+                addLogEntry('alert', '⏰ Time is up! Auto-submitting your work...');
+                await submitWork();
+            }
+        } else {
+            remainingDisplay.style.display = 'none';
+        }
+    } catch (e) {
+        // Timer poll silently fails — not critical
+    }
+}
+
+// Start timer polling when student session begins
+function startTimerPolling() {
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    examTimerInterval = setInterval(pollTimer, 3000); // Poll every 3 seconds
+    pollTimer(); // Immediate first poll
+}
+
+// --- Student Submission ---
+async function submitWork() {
+    if (hasSubmitted) return;
+    hasSubmitted = true;
+
+    addLogEntry('info', '📦 Submitting your work...');
+
+    // Collect all open files
+    const files = {};
+    try {
+        const fileList = await invoke('list_files');
+        for (const f of fileList) {
+            try {
+                const content = await invoke('read_file', { path: f });
+                files[f] = content;
+            } catch (e) { /* skip unreadable files */ }
+        }
+    } catch (e) {
+        console.error("Failed to collect files:", e);
+    }
+
+    try {
+        const res = await fetch(`${getAdminApiBase()}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: document.getElementById('join-regno')?.value?.trim() || '',
+                files: files
+            })
+        });
+
+        if (res.ok) {
+            addLogEntry('info', '✅ Work submitted successfully!');
+            const submitBtn = document.getElementById('submit-work-btn');
+            if (submitBtn) {
+                submitBtn.textContent = '✓ Submitted';
+                submitBtn.style.borderColor = '#10b981';
+                submitBtn.style.color = '#10b981';
+                submitBtn.disabled = true;
+            }
+        } else {
+            const err = await res.text();
+            addLogEntry('alert', `❌ Submission failed: ${err}`);
+            hasSubmitted = false; // Allow retry
+        }
+    } catch (e) {
+        addLogEntry('alert', `❌ Submission error: ${e}`);
+        hasSubmitted = false; // Allow retry
+    }
+}
+
+// Wire up submit button
+document.getElementById('submit-work-btn')?.addEventListener('click', async () => {
+    if (hasSubmitted) return;
+    // Confirmation
+    const confirmed = confirm('Are you sure you want to submit? This action is final.');
+    if (!confirmed) return;
+    await submitWork();
+});
+
+// Hook into student session start to begin timer
+const _origIsStudentActive = isStudentSessionActive;
+// Watch for session activation — start timer when joining
+const sessionCheckInterval = setInterval(() => {
+    if (isStudentSessionActive && currentRoomId) {
+        startTimerPolling();
+        const submitBtn = document.getElementById('submit-work-btn');
+        if (submitBtn) submitBtn.style.display = 'inline-block';
+        clearInterval(sessionCheckInterval);
+    }
+}, 1000);

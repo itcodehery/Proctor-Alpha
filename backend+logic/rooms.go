@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -42,7 +43,18 @@ type Room struct {
 	TimeAllocated time.Duration     `json:"time_allocated"`
 	StartTime     time.Time         `json:"start_time"`
 	EndTime       time.Time         `json:"end_time"`
+	ForbiddenApps []string          `json:"forbidden_apps"`
+	InviteList    []string          `json:"invite_list"`
 	Students      []UserSession     `json:"students"`
+	Analytics     *RoomAnalytics    `json:"analytics,omitempty"`
+}
+
+type RoomAnalytics struct {
+	TotalStudents int            `json:"total_students"`
+	TotalFlags    int            `json:"total_flags"`
+	AvgDuration   float64        `json:"avg_duration_mins"`
+	Submissions   int            `json:"submissions"`
+	FlaggedLogs   []string       `json:"flagged_logs"`
 }
 
 // UserSession represents the student's state within a specific room
@@ -53,9 +65,11 @@ type UserSession struct {
 	RegNo        string      `json:"regno"`
 	ActiveStatus UStatusEnum `json:"active_status"`
 	SelectedSet  string      `json:"selected_set"` // Changed to string to match Room.Sets key
-	IpAddress    string      `json:"ip_address"`   // Security tracking
-	LastPing     time.Time   `json:"last_ping"`    // To detect disconnects
-	Score        float64     `json:"score"`        // Optional: for auto-grading
+	IpAddress      string            `json:"ip_address"`   // Security tracking
+	LastPing       time.Time         `json:"last_ping"`    // To detect disconnects
+	Score          float64           `json:"score"`        // Optional: for auto-grading
+	Workspace      map[string]string `json:"workspace"`    // Live sync code
+	LatestSnapshot string            `json:"latest_snapshot"` // Base64 screenshot
 }
 
 var (
@@ -137,6 +151,84 @@ func saveRooms() {
 	if err := encoder.Encode(rooms); err != nil {
 		fmt.Println("Error encoding rooms.json:", err)
 	}
+}
+
+// StartExamHandler allows the admin to start the exam
+func SyncCodeHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID string            `json:"room_id"`
+		UserID string            `json:"user_id"`
+		Files  map[string]string `json:"files"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	for i, s := range room.Students {
+		if s.UserID == req.UserID {
+			if room.Students[i].Workspace == nil {
+				room.Students[i].Workspace = make(map[string]string)
+			}
+			for name, content := range req.Files {
+				room.Students[i].Workspace[name] = content
+			}
+			broadcastUpdate(req.RoomID, "STUDENT_CODE_UPDATE", room.Students[i])
+			break
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	var req struct {
+		RoomID   string `json:"room_id"`
+		UserID   string `json:"user_id"`
+		Snapshot string `json:"snapshot"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+	for i, s := range room.Students {
+		if s.UserID == req.UserID {
+			room.Students[i].LatestSnapshot = req.Snapshot
+			broadcastUpdate(req.RoomID, "STUDENT_SNAPSHOT_UPDATE", room.Students[i])
+			break
+		}
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // StartExamHandler allows the admin to start the exam
@@ -236,6 +328,8 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		ActiveStatus: Waiting, // Default status
 		Students:     []UserSession{},
 		Sets:         make(map[string]string),
+		ForbiddenApps: []string{},
+		InviteList:    []string{},
 	}
 
 	mu.Lock()
@@ -287,6 +381,31 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[DEBUG] Room Not Found: %s. Available: %v\n", req.RoomID, rooms)
 		http.Error(w, "Room not found", http.StatusNotFound)
 		return
+	}
+
+	// Block joining completed or paused rooms
+	if room.ActiveStatus == Complete {
+		http.Error(w, "This exam session has ended. You cannot join a completed room.", http.StatusForbidden)
+		return
+	}
+	if room.ActiveStatus == Paused {
+		http.Error(w, "This exam session is currently paused. Please wait.", http.StatusForbidden)
+		return
+	}
+
+	// Check if user is in invite list
+	if len(room.InviteList) > 0 {
+		invited := false
+		for _, inv := range room.InviteList {
+			if inv == req.RegNo {
+				invited = true
+				break
+			}
+		}
+		if !invited {
+			http.Error(w, "You are not in the invite list for this room", http.StatusForbidden)
+			return
+		}
 	}
 
 	// Check if user already exists
@@ -441,6 +560,8 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		AdminKey      string            `json:"admin_key"`
 		SessionName   *string           `json:"session_name"`
 		Sets          map[string]string `json:"sets"`
+		ForbiddenApps []string          `json:"forbidden_apps"`
+		InviteList    []string          `json:"invite_list"`
 		TimeAllocated *time.Duration    `json:"time_allocated"`
 		ActiveStatus  *StatusEnum       `json:"active_status"`
 	}
@@ -471,6 +592,12 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Sets != nil {
 		room.Sets = req.Sets
 	}
+	if req.ForbiddenApps != nil {
+		room.ForbiddenApps = req.ForbiddenApps
+	}
+	if req.InviteList != nil {
+		room.InviteList = req.InviteList
+	}
 	if req.TimeAllocated != nil {
 		room.TimeAllocated = *req.TimeAllocated
 		// Recalculate end time if active?
@@ -479,12 +606,38 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.ActiveStatus != nil {
-		// Logic changes based on status?
 		if *req.ActiveStatus == Active && room.ActiveStatus == Waiting {
 			room.StartTime = time.Now()
 			if room.TimeAllocated > 0 {
 				room.EndTime = room.StartTime.Add(room.TimeAllocated)
 			}
+		}
+		if *req.ActiveStatus == Complete && room.ActiveStatus != Complete {
+			room.EndTime = time.Now()
+			// Generate Analytics
+			analytics := RoomAnalytics{
+				TotalStudents: len(room.Students),
+			}
+			for _, s := range room.Students {
+				if s.ActiveStatus == 3 { // Flagged
+					analytics.TotalFlags++
+					analytics.FlaggedLogs = append(analytics.FlaggedLogs, fmt.Sprintf("Student %s (%s) was flagged", s.Username, s.RegNo))
+				}
+				if s.ActiveStatus == 2 { // Submitted
+					analytics.Submissions++
+				}
+			}
+			if !room.StartTime.IsZero() {
+				analytics.AvgDuration = room.EndTime.Sub(room.StartTime).Minutes()
+			}
+			room.Analytics = &analytics
+
+			// Export Report
+			home, _ := os.UserHomeDir()
+			reportPath := filepath.Join(home, ".proctor_workspace", "reports", room.ID+"_report.json")
+			os.MkdirAll(filepath.Dir(reportPath), 0755)
+			reportData, _ := json.MarshalIndent(room, "", "  ")
+			os.WriteFile(reportPath, reportData, 0644)
 		}
 		room.ActiveStatus = *req.ActiveStatus
 	}
@@ -501,4 +654,122 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Save state
 	go saveRooms()
+}
+
+// SubmitHandler allows a student to submit their work
+func SubmitHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID string            `json:"room_id"`
+		UserID string            `json:"user_id"`
+		Files  map[string]string `json:"files"` // Final workspace snapshot
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	room, exists := rooms[req.RoomID]
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	found := false
+	for i, s := range room.Students {
+		if s.UserID == req.UserID {
+			room.Students[i].ActiveStatus = Submitted
+
+			// Save final workspace
+			if req.Files != nil {
+				room.Students[i].Workspace = req.Files
+			}
+
+			// Write submission to disk
+			home, _ := os.UserHomeDir()
+			submissionDir := filepath.Join(home, ".proctor_workspace", "submissions", room.ID, s.RegNo)
+			os.MkdirAll(submissionDir, 0755)
+			for filename, content := range room.Students[i].Workspace {
+				os.WriteFile(filepath.Join(submissionDir, filename), []byte(content), 0644)
+			}
+
+			fmt.Printf("Student %s (%s) submitted in room %s\n", s.Username, s.RegNo, room.ID)
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		http.Error(w, "Student not found in room", http.StatusNotFound)
+		return
+	}
+
+	broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)
+	go saveRooms()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Submission received successfully",
+	})
+}
+
+// TimerInfoHandler returns the remaining time for a room
+func TimerInfoHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+
+	roomID := r.URL.Query().Get("room_id")
+	if roomID == "" {
+		http.Error(w, "room_id is required", http.StatusBadRequest)
+		return
+	}
+
+	mu.RLock()
+	room, exists := rooms[roomID]
+	mu.RUnlock()
+
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	response := struct {
+		Status        StatusEnum `json:"status"`
+		TimeAllocated int64      `json:"time_allocated_ms"`
+		StartTime     int64      `json:"start_time_ms"`
+		EndTime       int64      `json:"end_time_ms"`
+		RemainingMs   int64      `json:"remaining_ms"`
+		IsTimerActive bool       `json:"is_timer_active"`
+	}{
+		Status:        room.ActiveStatus,
+		TimeAllocated: room.TimeAllocated.Milliseconds(),
+		StartTime:     room.StartTime.UnixMilli(),
+		IsTimerActive: room.ActiveStatus == Active && room.TimeAllocated > 0,
+	}
+
+	if room.ActiveStatus == Active && room.TimeAllocated > 0 {
+		endTime := room.StartTime.Add(room.TimeAllocated)
+		response.EndTime = endTime.UnixMilli()
+		remaining := time.Until(endTime)
+		if remaining < 0 {
+			remaining = 0
+		}
+		response.RemainingMs = remaining.Milliseconds()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
