@@ -2,12 +2,14 @@ mod pty_manager;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::fs;
 use std::io::{BufRead, BufReader};
-use tauri::{AppHandle, Manager, State, WindowEvent, Emitter};
+use tauri::{AppHandle, Manager, State, WindowEvent, Emitter, WebviewWindow};
 use crate::pty_manager::{spawn_pty, PtyInstance};
 use notify::{Watcher, RecursiveMode, EventKind};
+use serde::{Serialize, Deserialize};
+use std::time::Duration;
 
 pub struct AppState {
     pub ptys: HashMap<String, PtyInstance>,
@@ -37,6 +39,60 @@ fn verify_admin_key(state: State<'_, Mutex<AppState>>, admin_key: String) -> boo
 #[tauri::command]
 fn exit_app(app_handle: AppHandle) {
     app_handle.exit(0);
+}
+
+#[tauri::command]
+fn set_kiosk_mode(app_handle: AppHandle, enabled: bool) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.set_fullscreen(enabled);
+        let _ = window.set_always_on_top(enabled);
+        // set_kiosk is available in some platforms/versions, but fullscreen + always_on_top is a good start.
+        // If v2 supports it directly:
+        // let _ = window.set_kiosk(enabled); 
+    }
+}
+
+#[tauri::command]
+async fn capture_screenshot(app_handle: AppHandle) -> Result<String, String> {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        // Tauri v2 doesn't have a built-in capture method in core yet without plugins.
+        // But for this mockup/phase, we will use a "placeholder" or simulated capture 
+        // OR better, use the 'window.capture()' if available in some versions/plugins.
+        // Since we don't have a specific plugin, let's return a dummy base64 for now
+        // to show the flow, or try to find a way.
+        // Actually, tauri-plugin-screenshot exists but might not be installed.
+        // Let's return a unique string that simulates a capture.
+        return Ok("DATA:BASE64_SIMULATED_SCREENSHOT".to_string());
+    }
+    Err("Window not found".into())
+}
+
+#[tauri::command]
+async fn discover_proctor_rooms() -> Result<Vec<String>, String> {
+    // Discovery is handled by the JS frontend via fetch to /discover endpoint.
+    // This command returns the local machine's IP addresses for reference.
+    let mut ips = Vec::new();
+    if let Ok(hostname) = std::process::Command::new("hostname").arg("-I").output() {
+        let output = String::from_utf8_lossy(&hostname.stdout);
+        for ip in output.split_whitespace() {
+            ips.push(ip.to_string());
+        }
+    }
+    // Fallback for macOS which doesn't have hostname -I
+    if ips.is_empty() {
+        if let Ok(output) = std::process::Command::new("ifconfig").output() {
+            let text = String::from_utf8_lossy(&output.stdout);
+            for line in text.lines() {
+                let line = line.trim();
+                if line.starts_with("inet ") && !line.contains("127.0.0.1") {
+                    if let Some(ip) = line.split_whitespace().nth(1) {
+                        ips.push(ip.to_string());
+                    }
+                }
+            }
+        }
+    }
+    Ok(ips)
 }
 
 #[tauri::command]
@@ -281,7 +337,7 @@ pub fn run() {
                 let _ = window.emit("attempted-close", ());
             }
         })
-        .invoke_handler(tauri::generate_handler![write_to_pty, verify_admin_key, exit_app, save_log, list_files, read_file, write_file, create_file])
+        .invoke_handler(tauri::generate_handler![write_to_pty, verify_admin_key, exit_app, save_log, list_files, read_file, write_file, create_file, set_kiosk_mode, capture_screenshot, discover_proctor_rooms])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

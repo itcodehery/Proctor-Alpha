@@ -457,6 +457,28 @@ Split(['#pane-editor', '#pane-terminal'], {
   }
 });
 
+// --- Live View Global State ---
+let liveViewEditor = null;
+let liveViewStudentId = null;
+
+function initLiveViewEditor() {
+    if (liveViewEditor) return;
+    liveViewEditor = monaco.editor.create(document.getElementById('lv-editor-container'), {
+        value: "// Waiting for student code...",
+        language: "javascript",
+        theme: "vs-dark",
+        readOnly: true,
+        automaticLayout: true,
+        fontSize: 12,
+        minimap: { enabled: false }
+    });
+}
+
+document.getElementById('live-view-close').onclick = () => {
+    document.getElementById('live-view-overlay').style.display = 'none';
+    liveViewStudentId = null;
+};
+
 // --- Session Timer ---
 let sessionSeconds = 0;
 let timerInterval = null;
@@ -483,7 +505,7 @@ async function pollProcessShield() {
   if (!isStudentSessionActive) return; // Only scan during student exam session
 
   try {
-    const response = await fetch(`${getAdminApiBase()}/scan`);
+    const response = await fetch(`${getAdminApiBase()}/scan?room_id=${currentRoomId}`);
     if (!response.ok) return;
     const data = await response.json();
 
@@ -497,6 +519,52 @@ async function pollProcessShield() {
 }
 
 setInterval(pollProcessShield, 5000);
+
+// --- Student Auto-Sync & Snapshots ---
+async function syncStudentCode() {
+    if (!isStudentSessionActive) return;
+    
+    // Collect all open file contents
+    const files = {};
+    for (const [name, state] of Object.entries(fileStates)) {
+        files[name] = state.content;
+    }
+
+    try {
+        await fetch(`${getAdminApiBase()}/sync-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: joinRegNoInput.value.trim(),
+                files: files
+            })
+        });
+    } catch (e) {
+        console.error("Auto-sync failed:", e);
+    }
+}
+
+async function captureAndSendSnapshot() {
+    if (!isStudentSessionActive) return;
+    try {
+        const snapshot = await invoke('capture_screenshot');
+        await fetch(`${getAdminApiBase()}/student/snapshot`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: joinRegNoInput.value.trim(),
+                snapshot: snapshot
+            })
+        });
+    } catch (e) {
+        console.error("Snapshot failed:", e);
+    }
+}
+
+setInterval(syncStudentCode, 30000); // Sync every 30s
+setInterval(captureAndSendSnapshot, 60000); // Snapshot every 1m
 
 // --- Dialog Management ---
 const endSessionBtn = document.getElementById('end-session-btn');
@@ -868,6 +936,9 @@ async function handleJoinRoom() {
         if (monacoEditor) monacoEditor.layout();
       }, 300);
 
+      // Enable Kiosk Mode
+      invoke('set_kiosk_mode', { enabled: true });
+
       // TODO: Update UI with session info if needed
     } else {
       showJoinError(data.message || "Failed to join room");
@@ -1146,6 +1217,7 @@ async function fetchRoomDetails() {
                     <td>${getStatusBadgeHTML(s.active_status)}</td>
                     <td class="mono">${s.ip_address}</td>
                     <td>
+                        <button class="small-btn" style="border-color: var(--accent-primary); color: var(--accent-primary);" onclick="openLiveView('${s.user_id}', '${s.username}')">Live View</button>
                         <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
                     </td>
                 `;
@@ -1191,9 +1263,8 @@ document.getElementById('rd-save-btn').addEventListener('click', async () => {
     }
   });
 
-  if (Object.keys(sets).length === 0) {
-    // Optional warning or just null
-  }
+  // Collect Forbidden Apps
+  const forbiddenApps = document.getElementById('rd-forbidden-apps').value.split(',').map(s => s.trim()).filter(s => s !== "");
 
   if (!key) {
     alert("Admin Key is required to save changes.");
@@ -1210,7 +1281,9 @@ document.getElementById('rd-save-btn').addEventListener('click', async () => {
         session_name: name,
         time_allocated: durationMins * 60000000000,
         active_status: status,
-        sets: sets
+        sets: sets,
+        forbidden_apps: forbiddenApps,
+        invite_list: document.getElementById('rd-invite-list').value.split(',').map(s => s.trim()).filter(s => s !== "")
       })
     });
 
@@ -1329,8 +1402,9 @@ function initWebSocket() {
             fetchRoomDetails();
           }
         }
+      } else if (msg.type === "STUDENT_CODE_UPDATE" || msg.type === "STUDENT_SNAPSHOT_UPDATE") {
+        updateLiveViewUI(msg.payload);
       }
-
     } catch (e) {
       console.error("WS Msg Error:", e);
     }
@@ -1379,6 +1453,7 @@ function updateRoomDetailsUI(room) {
                 <td>${getStatusBadgeHTML(s.active_status)}</td>
                 <td class="mono">${s.ip_address}</td>
                 <td>
+                    <button class="small-btn" style="border-color: var(--accent-primary); color: var(--accent-primary);" onclick="openLiveView('${s.user_id}', '${s.username}')">Live View</button>
                     <button class="small-btn" style="border-color: #ef4444; color: #ef4444;" onclick="moderateStudent('${s.user_id}', 1)">Kick</button>
                 </td>
             `;
@@ -1411,6 +1486,9 @@ fetchRoomDetails = async () => {
       } else {
         addSetRow();
       }
+
+      document.getElementById('rd-forbidden-apps').value = (room.forbidden_apps || []).join(', ');
+      document.getElementById('rd-invite-list').value = (room.invite_list || []).join(', ');
     }
 
     updateRoomDetailsUI(room);
@@ -1419,9 +1497,197 @@ fetchRoomDetails = async () => {
   }
 };
 
-// --- Activity Monitor: Tab Switch Tracking ---
+// Show/Update Live View Modal
+window.openLiveView = (userId, name) => {
+    liveViewStudentId = userId;
+    document.getElementById('lv-student-name').innerText = `Live View: ${name}`;
+    document.getElementById('live-view-overlay').style.display = 'flex';
+    initLiveViewEditor();
+    
+    // Initial fetch to populate if needed
+    fetchRoomDetails();
+};
+
+function updateLiveViewUI(student) {
+    if (liveViewStudentId !== student.user_id) return;
+    
+    // Update Editor
+    if (liveViewEditor && student.workspace) {
+        // Find main file or first file
+        const fileName = Object.keys(student.workspace)[0];
+        if (fileName) {
+            const content = student.workspace[fileName];
+            if (liveViewEditor.getValue() !== content) {
+                liveViewEditor.setValue(content);
+                // Set language based on extension
+                const ext = fileName.split('.').pop();
+                const langMap = { 'js': 'javascript', 'py': 'python', 'go': 'go', 'cpp': 'cpp', 'html': 'html', 'css': 'css' };
+                monaco.editor.setModelLanguage(liveViewEditor.getModel(), langMap[ext] || 'text');
+            }
+        }
+    }
+    
+    // Update Snapshot
+    const snapshotImg = document.getElementById('lv-snapshot-img');
+    if (student.latest_snapshot) {
+        if (student.latest_snapshot.startsWith("DATA:")) {
+            snapshotImg.innerHTML = `<div style="color: var(--accent-primary); text-align: center;">Simulated Screenshot<br/><small>${new Date().toLocaleTimeString()}</small></div>`;
+        } else {
+             snapshotImg.innerHTML = `<img src="${student.latest_snapshot}" style="width: 100%; height: 100%; object-fit: contain;">`;
+        }
+    }
+    
+    document.getElementById('lv-last-sync').innerText = new Date().toLocaleTimeString();
+    document.getElementById('lv-status').innerText = getStatusBadgeHTML(student.active_status);
+}
+
+// --- Anti-Cheat Enhancements ---
+
+// 1. Tab-Switch & Visibility Tracking
+const handleFlagEvent = async (reason) => {
+    if (!isStudentSessionActive) return;
+    addLogEntry('alert', `⚠️ ${reason} detected! Flagging session.`);
+    
+    try {
+        await fetch(`${getAdminApiBase()}/admin/update-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: joinRegNoInput.value.trim(),
+                status: 3 // Flagged
+            })
+        });
+    } catch (e) {
+        console.error("Failed to flag user:", e);
+    }
+};
+
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && isStudentSessionActive) {
-    addLogEntry('alert', '⚠️ Tab switch detected! Please return to the exam.');
+    handleFlagEvent("Tab switch");
   }
 });
+
+window.addEventListener('blur', () => {
+    if (isStudentSessionActive) handleFlagEvent("Window focus loss");
+});
+
+// 2. Clipboard Protection
+window.addEventListener('paste', (e) => {
+    if (isStudentSessionActive) {
+        // Warning: Simple alert might be annoying, but effective for deterrent
+        addLogEntry('alert', '⚠️ Paste operation detected. All clipboard activity is monitored.');
+    }
+});
+
+// 3. Disable Context Menu
+window.addEventListener('contextmenu', (e) => {
+    if (isStudentSessionActive) e.preventDefault();
+});
+
+// --- Room Discovery (HTTP Scan) ---
+async function discoverRooms() {
+    const listEl = document.getElementById('discovered-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">Scanning LAN...</div>';
+
+    const subnets = ['192.168.1', '192.168.0', '10.0.0'];
+    const found = [];
+
+    for (const subnet of subnets) {
+        const promises = [];
+        for (let i = 1; i <= 30; i++) {
+            const ip = `${subnet}.${i}`;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 500);
+            promises.push(
+                fetch(`http://${ip}:8081/discover`, { signal: controller.signal })
+                    .then(r => r.json())
+                    .then(data => { clearTimeout(timeout); if (data.service === 'proctor-alpha') found.push(ip); })
+                    .catch(() => { clearTimeout(timeout); })
+            );
+        }
+        await Promise.all(promises);
+        if (found.length > 0) break;
+    }
+
+    if (found.length === 0) {
+        listEl.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">No rooms found nearby.</div>';
+        return;
+    }
+    listEl.innerHTML = '';
+    found.forEach(ip => {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer;';
+        row.innerHTML = `<span style="font-family: monospace; color: var(--accent-primary);">${ip}</span><span style="font-size: 0.8em; color: #666;">Click to use</span>`;
+        row.onclick = () => {
+            const serverInput = document.getElementById('join-server-ip');
+            if (serverInput) serverInput.value = ip;
+        };
+        listEl.appendChild(row);
+    });
+}
+
+// Auto-discover on load & refresh button
+setTimeout(discoverRooms, 1000);
+const refreshDiscBtn = document.getElementById('refresh-discovery-btn');
+if (refreshDiscBtn) refreshDiscBtn.onclick = discoverRooms;
+
+// --- Analytics Rendering ---
+function renderAnalytics(room) {
+    const analyticsBtn = document.getElementById('tab-btn-analytics');
+    if (!room.analytics) {
+        if (analyticsBtn) analyticsBtn.style.display = 'none';
+        return;
+    }
+    if (analyticsBtn) analyticsBtn.style.display = 'inline-block';
+
+    const a = room.analytics;
+    const summaryEl = document.getElementById('analytics-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <div class="stat-card" style="background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 20px; text-align: center;">
+                <div style="font-size: 2em; font-weight: 700; color: var(--accent-primary);">${a.total_students}</div>
+                <div style="font-size: 0.8em; color: #888; margin-top: 4px;">Total Students</div>
+            </div>
+            <div class="stat-card" style="background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 20px; text-align: center;">
+                <div style="font-size: 2em; font-weight: 700; color: #3b82f6;">${a.submissions}</div>
+                <div style="font-size: 0.8em; color: #888; margin-top: 4px;">Submissions</div>
+            </div>
+            <div class="stat-card" style="background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.2); border-radius: 12px; padding: 20px; text-align: center;">
+                <div style="font-size: 2em; font-weight: 700; color: #f59e0b;">${a.total_flags}</div>
+                <div style="font-size: 0.8em; color: #888; margin-top: 4px;">Flags Raised</div>
+            </div>
+            <div class="stat-card" style="background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.2); border-radius: 12px; padding: 20px; text-align: center;">
+                <div style="font-size: 2em; font-weight: 700; color: #8b5cf6;">${Math.round(a.avg_duration_mins)}</div>
+                <div style="font-size: 0.8em; color: #888; margin-top: 4px;">Duration (min)</div>
+            </div>
+        `;
+    }
+
+    const flagListEl = document.getElementById('analytics-flag-list');
+    if (flagListEl) {
+        if (!a.flagged_logs || a.flagged_logs.length === 0) {
+            flagListEl.innerHTML = '<div style="color: var(--accent-primary); padding: 10px;">✓ No incidents recorded.</div>';
+        } else {
+            flagListEl.innerHTML = a.flagged_logs.map(log =>
+                `<div style="padding: 8px 12px; margin-bottom: 6px; background: rgba(245,158,11,0.05); border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.9em;">⚠️ ${log}</div>`
+            ).join('');
+        }
+    }
+}
+
+// Hook analytics into room detail fetch
+const _origFetchRoomDetails = fetchRoomDetails;
+fetchRoomDetails = async () => {
+    await _origFetchRoomDetails();
+    // After fetch, also render analytics if available
+    if (!currentRoomId) return;
+    try {
+        const res = await fetch(`${getAdminApiBase()}/get-room?room_id=${currentRoomId}`);
+        if (!res.ok) return;
+        const room = await res.json();
+        renderAnalytics(room);
+    } catch (e) { /* ignore */ }
+};
