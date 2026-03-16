@@ -480,19 +480,15 @@ startTimer();
 
 // --- Process Shield (Go Backend Integration) ---
 async function pollProcessShield() {
+  if (!isStudentSessionActive) return; // Only scan during student exam session
+
   try {
-    // Process Shield Poll runs globally?
-    // If it runs on Student PC, it scans Local.
-    // If it runs on Admin PC, it scans Local.
-    // So always Local.
     const response = await fetch(`${getAdminApiBase()}/scan`);
     if (!response.ok) return;
     const data = await response.json();
 
     if (data.forbidden_found) {
       const apps = data.processes.join(', ');
-      // Check if we just logged this to avoid spamming? 
-      // For now, simple logging.
       addLogEntry('alert', `Process Shield: Detected ${apps}`);
     }
   } catch (e) {
@@ -657,8 +653,6 @@ const createRoomDialog = document.getElementById('create-room-dialog');
 const createRoomClose = document.getElementById('create-room-close');
 const crSubmitBtn = document.getElementById('cr-submit-btn');
 const serverStatusIndicator = document.getElementById('server-status-indicator');
-const monitorShieldBtn = document.getElementById('monitor-shield-btn');
-const shieldStatusText = document.getElementById('shield-status-text');
 
 let isStudentSessionActive = false;
 
@@ -927,32 +921,7 @@ if (adminBackBtn) {
 }
 
 
-// Process Shield Monitor
-if (monitorShieldBtn) {
-  monitorShieldBtn.onclick = async () => {
-    monitorShieldBtn.innerText = "Scanning...";
-    shieldStatusText.innerText = "Scanning processes...";
 
-    try {
-      // Process Shield runs LOCALLY on the machine
-      const res = await fetch(`${getAdminApiBase()}/scan`);
-      const data = await res.json();
-
-      if (data.forbidden_found) {
-        shieldStatusText.innerText = `⚠️ REMOVED: ${data.processes.join(', ')}`;
-        shieldStatusText.style.color = 'var(--accent-warning)';
-      } else {
-        shieldStatusText.innerText = "✅ System Clean";
-        shieldStatusText.style.color = 'var(--accent-primary)';
-      }
-    } catch (e) {
-      shieldStatusText.innerText = "❌ Connection Failed";
-      shieldStatusText.style.color = 'var(--accent-danger)';
-    }
-
-    setTimeout(() => monitorShieldBtn.innerText = "Monitor", 2000);
-  };
-}
 
 // Room Management
 async function fetchRooms() {
