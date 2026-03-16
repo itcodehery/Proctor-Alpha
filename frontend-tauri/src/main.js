@@ -537,7 +537,8 @@ async function syncStudentCode() {
             body: JSON.stringify({
                 room_id: currentRoomId,
                 user_id: joinRegNoInput.value.trim(),
-                files: files
+                files: files,
+                active_file: activeFileName || ''
             })
         });
     } catch (e) {
@@ -1532,22 +1533,59 @@ setInterval(async () => {
     } catch (e) { /* silent */ }
 }, 5000);
 
+let liveViewCurrentFile = null; // Which file the admin is viewing in live view
+
 function updateLiveViewUI(student) {
     if (liveViewStudentId !== student.user_id) return;
-    
-    // Update Editor
-    if (liveViewEditor && student.workspace) {
-        // Find main file or first file
-        const fileName = Object.keys(student.workspace)[0];
-        if (fileName) {
-            const content = student.workspace[fileName];
-            if (liveViewEditor.getValue() !== content) {
-                liveViewEditor.setValue(content);
-                // Set language based on extension
-                const ext = fileName.split('.').pop();
-                const langMap = { 'js': 'javascript', 'py': 'python', 'go': 'go', 'cpp': 'cpp', 'html': 'html', 'css': 'css' };
-                monaco.editor.setModelLanguage(liveViewEditor.getModel(), langMap[ext] || 'text');
-            }
+
+    const workspace = student.workspace || {};
+    const fileNames = Object.keys(workspace);
+    const activeFile = student.active_file || fileNames[0] || null;
+
+    // --- Render File Tabs ---
+    const tabsEl = document.getElementById('lv-file-tabs');
+    if (tabsEl) {
+        // Keep the "FILES:" label
+        const existingTabs = tabsEl.querySelectorAll('.lv-file-tab');
+        const existingNames = [...existingTabs].map(t => t.dataset.file);
+        const needsRebuild = fileNames.length !== existingNames.length || fileNames.some((n, i) => n !== existingNames[i]);
+        
+        if (needsRebuild) {
+            // Remove old tabs
+            existingTabs.forEach(t => t.remove());
+            fileNames.forEach(name => {
+                const tab = document.createElement('button');
+                tab.className = 'lv-file-tab';
+                tab.dataset.file = name;
+                const isActive = name === activeFile;
+                tab.style.cssText = `padding: 4px 12px; border-radius: 4px; border: 1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-color)'}; background: ${isActive ? 'rgba(16,185,129,0.15)' : 'transparent'}; color: ${isActive ? 'var(--accent-primary)' : '#888'}; cursor: pointer; font-size: 0.8em; font-family: 'JetBrains Mono', monospace; white-space: nowrap;`;
+                tab.textContent = name;
+                tab.onclick = () => {
+                    liveViewCurrentFile = name;
+                    updateLiveViewUI(student);
+                };
+                tabsEl.appendChild(tab);
+            });
+        } else {
+            // Just update active states
+            existingTabs.forEach(tab => {
+                const isViewing = tab.dataset.file === (liveViewCurrentFile || activeFile);
+                tab.style.borderColor = isViewing ? 'var(--accent-primary)' : 'var(--border-color)';
+                tab.style.background = isViewing ? 'rgba(16,185,129,0.15)' : 'transparent';
+                tab.style.color = isViewing ? 'var(--accent-primary)' : '#888';
+            });
+        }
+    }
+
+    // --- Update Editor with selected file ---
+    const fileToShow = liveViewCurrentFile || activeFile;
+    if (liveViewEditor && fileToShow && workspace[fileToShow] !== undefined) {
+        const content = workspace[fileToShow];
+        if (liveViewEditor.getValue() !== content) {
+            liveViewEditor.setValue(content);
+            const ext = fileToShow.split('.').pop();
+            const langMap = { 'js': 'javascript', 'py': 'python', 'go': 'go', 'cpp': 'cpp', 'c': 'c', 'html': 'html', 'css': 'css', 'java': 'java', 'rs': 'rust', 'ts': 'typescript' };
+            monaco.editor.setModelLanguage(liveViewEditor.getModel(), langMap[ext] || 'text');
         }
     }
     
@@ -1561,16 +1599,52 @@ function updateLiveViewUI(student) {
         }
     }
     
+    // Update info
     document.getElementById('lv-last-sync').innerText = new Date().toLocaleTimeString();
-    document.getElementById('lv-status').innerText = getStatusBadgeHTML(student.active_status);
+    document.getElementById('lv-status').innerHTML = getStatusBadgeHTML(student.active_status);
+    const activeFileEl = document.getElementById('lv-active-file');
+    if (activeFileEl) activeFileEl.textContent = activeFile || '-';
+
+    // --- Update Activity Log ---
+    const logEl = document.getElementById('lv-activity-log');
+    if (logEl) {
+        const logs = student.activity_log || [];
+        if (logs.length === 0) {
+            logEl.innerHTML = '<span style="color: #666;">No activity yet.</span>';
+        } else {
+            logEl.innerHTML = logs.map(entry => {
+                const isFlag = entry.includes('FLAG') || entry.includes('⚠️');
+                const color = isFlag ? '#ef4444' : '#888';
+                return `<div style="padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); color: ${color};">${entry}</div>`;
+            }).join('');
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+    }
 }
 
 // --- Anti-Cheat Enhancements ---
+
+// Helper to log activity to the backend
+async function logActivity(message) {
+    if (!isStudentSessionActive || !currentRoomId) return;
+    try {
+        await fetch(`${getAdminApiBase()}/log-activity`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                room_id: currentRoomId,
+                user_id: joinRegNoInput.value.trim(),
+                message: message
+            })
+        });
+    } catch (e) { /* silent */ }
+}
 
 // 1. Tab-Switch & Visibility Tracking
 const handleFlagEvent = async (reason) => {
     if (!isStudentSessionActive) return;
     addLogEntry('alert', `⚠️ ${reason} detected! Flagging session.`);
+    logActivity(`⚠️ FLAG: ${reason}`);
     
     try {
         await fetch(`${getAdminApiBase()}/admin/update-status`, {
@@ -1600,8 +1674,8 @@ window.addEventListener('blur', () => {
 // 2. Clipboard Protection
 window.addEventListener('paste', (e) => {
     if (isStudentSessionActive) {
-        // Warning: Simple alert might be annoying, but effective for deterrent
         addLogEntry('alert', '⚠️ Paste operation detected. All clipboard activity is monitored.');
+        logActivity('⚠️ Paste operation detected');
     }
 });
 

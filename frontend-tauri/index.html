@@ -322,19 +322,38 @@
 
         <!-- Live View Modal (Admin Only) -->
         <div id="live-view-overlay" class="dialog-overlay" style="display: none; z-index: 2000;">
-          <div class="modal" style="max-width: 90%; width: 1200px; height: 80vh; display: flex; flex-direction: column;">
+          <div class="modal" style="max-width: 95%; width: 1400px; height: 85vh; display: flex; flex-direction: column;">
             <div class="modal-close-icon" id="live-view-close">✕</div>
             <h2 class="modal-title" id="lv-student-name">Student Live View</h2>
-            <div style="flex: 1; display: flex; gap: 20px; min-height: 0;">
-              <div id="lv-editor-container" style="flex: 2; height: 100%; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;"></div>
-              <div id="lv-snapshot-container" style="flex: 1; height: 100%; display: flex; flex-direction: column; gap: 10px;">
+
+            <!-- File Tabs -->
+            <div id="lv-file-tabs" style="display: flex; gap: 4px; padding: 0 0 10px 0; overflow-x: auto; flex-shrink: 0; border-bottom: 1px solid var(--border-color); margin-bottom: 10px;">
+              <span style="color: #666; font-size: 0.8em; align-self: center; margin-right: 8px;">FILES:</span>
+              <!-- File tabs injected by JS -->
+            </div>
+
+            <div style="flex: 1; display: flex; gap: 16px; min-height: 0;">
+              <!-- Code Editor (left) -->
+              <div style="flex: 2; display: flex; flex-direction: column; min-height: 0;">
+                <div id="lv-editor-container" style="flex: 1; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;"></div>
+              </div>
+
+              <!-- Right Panel: Snapshot + Activity -->
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;">
                 <label>Latest Snapshot</label>
-                <div id="lv-snapshot-img" style="flex: 1; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <div id="lv-snapshot-img" style="height: 150px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
                   <span style="color: #666;">No snapshot available</span>
                 </div>
-                <div id="lv-status-info" style="font-size: 0.9em; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+
+                <div id="lv-status-info" style="font-size: 0.9em; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; flex-shrink: 0;">
                   <div>Last Sync: <span id="lv-last-sync">-</span></div>
                   <div>Status: <span id="lv-status">-</span></div>
+                  <div>Active File: <span id="lv-active-file" style="color: var(--accent-primary);">-</span></div>
+                </div>
+
+                <label style="margin-top: 4px;">Activity Monitor</label>
+                <div id="lv-activity-log" style="flex: 1; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; overflow-y: auto; border: 1px solid var(--border-color); font-size: 0.8em; font-family: 'JetBrains Mono', monospace;">
+                  <span style="color: #666;">No activity yet.</span>
                 </div>
               </div>
             </div>
