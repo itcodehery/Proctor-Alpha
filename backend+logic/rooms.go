@@ -52,21 +52,21 @@ type Room struct {
 }
 
 type RoomAnalytics struct {
-	TotalStudents int            `json:"total_students"`
-	TotalFlags    int            `json:"total_flags"`
-	AvgDuration   float64        `json:"avg_duration_mins"`
-	Submissions   int            `json:"submissions"`
-	FlaggedLogs   []string       `json:"flagged_logs"`
+	TotalStudents int      `json:"total_students"`
+	TotalFlags    int      `json:"total_flags"`
+	AvgDuration   float64  `json:"avg_duration_mins"`
+	Submissions   int      `json:"submissions"`
+	FlaggedLogs   []string `json:"flagged_logs"`
 }
 
 // UserSession represents the student's state within a specific room
 type UserSession struct {
-	ID           string      `json:"id"`
-	UserID       string      `json:"user_id"`
-	Username     string      `json:"username"`
-	RegNo        string      `json:"regno"`
-	ActiveStatus UStatusEnum `json:"active_status"`
-	SelectedSet  string      `json:"selected_set"`
+	ID             string            `json:"id"`
+	UserID         string            `json:"user_id"`
+	Username       string            `json:"username"`
+	RegNo          string            `json:"regno"`
+	ActiveStatus   UStatusEnum       `json:"active_status"`
+	SelectedSet    string            `json:"selected_set"`
 	IpAddress      string            `json:"ip_address"`
 	LastPing       time.Time         `json:"last_ping"`
 	Score          float64           `json:"score"`
@@ -398,7 +398,7 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Unlock()
 
 	saveRooms() // Persist the new room
-	
+
 	// Broadcast List Update
 	broadcastUpdate("all", "ROOM_LIST_UPDATE", nil)
 
@@ -542,9 +542,9 @@ func AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		if s.UserID == req.UserID {
 			room.Students[i].ActiveStatus = req.Status
 			found = true
-			
+
 			// Broadcast Update
-			broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)			
+			broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)
 			break
 		}
 	}
