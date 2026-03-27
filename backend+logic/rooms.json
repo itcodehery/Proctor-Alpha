@@ -97,6 +97,40 @@
     "invite_list": [],
     "students": []
   },
+  "HHEX8T": {
+    "id": "HHEX8T",
+    "host_id": "237232623",
+    "session_name": "01TestBcrypt",
+    "sets": {},
+    "active_status": 1,
+    "admin_key": "$2a$10$Q0aOqp8mbcQxaRM3qrJJj.hNyUuqt2veJ0Y0ehRoDLORtRk62zB4m",
+    "time_allocated": 0,
+    "start_time": "2026-03-27T10:01:08.228978+05:30",
+    "end_time": "0001-01-01T00:00:00Z",
+    "forbidden_apps": [],
+    "invite_list": [],
+    "students": [
+      {
+        "id": "2518cb47f2f21a59",
+        "user_id": "2547142",
+        "username": "Praneeth",
+        "regno": "2547142",
+        "active_status": 2,
+        "selected_set": "",
+        "ip_address": "172.31.18.41:47182",
+        "last_ping": "2026-03-27T10:00:55.950821+05:30",
+        "score": 0,
+        "workspace": {},
+        "active_file": "",
+        "latest_snapshot": "DATA:BASE64_SIMULATED_SCREENSHOT",
+        "activity_log": [
+          "[10:01:18] ⚠️ FLAG: Window focus loss",
+          "[10:01:47] ⚠️ FLAG: Window focus loss",
+          "[10:02:16] ⚠️ FLAG: Window focus loss"
+        ]
+      }
+    ]
+  },
   "HT7WYQ": {
     "id": "HT7WYQ",
     "host_id": "EMP3202",

@@ -641,13 +641,49 @@ async function exportLog() {
 adminInput.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     const key = adminInput.value;
-    const isValid = await invoke('verify_admin_key', { adminKey: key });
-    if (isValid) {
-      await exportLog();
-      await invoke('exit_app');
-    } else {
-      adminInput.classList.add('error');
-      setTimeout(() => adminInput.classList.remove('error'), 500);
+    
+    // Fallback: If no room joined yet (e.g. testing), just use the old method.
+    if (!currentRoomId) {
+       const isValid = await invoke('verify_admin_key', { adminKey: key });
+       if (isValid) {
+         await exportLog();
+         await invoke('exit_app');
+       } else {
+         adminInput.classList.add('error');
+         setTimeout(() => adminInput.classList.remove('error'), 500);
+       }
+       return;
+    }
+
+    // Verify against the backend for the current room
+    try {
+      const res = await fetch(`${getAdminApiBase()}/admin/verify-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          room_id: currentRoomId,
+          admin_key: key
+        })
+      });
+
+      if (res.ok) {
+        await exportLog();
+        await invoke('exit_app');
+      } else {
+        adminInput.classList.add('error');
+        setTimeout(() => adminInput.classList.remove('error'), 500);
+      }
+    } catch (e) {
+      console.error("Backend offline or verify failed:", e);
+      // Fallback to tauri offline check if backend is unreachable 
+      const isValid = await invoke('verify_admin_key', { adminKey: key });
+      if (isValid) {
+         await exportLog();
+         await invoke('exit_app');
+      } else {
+         adminInput.classList.add('error');
+         setTimeout(() => adminInput.classList.remove('error'), 500);
+      }
     }
   }
 });

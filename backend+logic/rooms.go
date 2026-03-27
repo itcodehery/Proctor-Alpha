@@ -605,6 +605,47 @@ func GetAllRoomsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(roomList)
 }
 
+// VerifyAdminKeyHandler checks if the provided admin key is valid for the room
+func VerifyAdminKeyHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID   string `json:"room_id"`
+		AdminKey string `json:"admin_key"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.RLock()
+	room, exists := rooms[req.RoomID]
+	mu.RUnlock()
+
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
+		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{
+		"valid": true,
+	})
+}
+
 // UpdateRoomHandler allows updating room details
 func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
