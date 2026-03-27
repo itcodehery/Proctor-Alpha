@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // StatusEnum defines the current state of the Exam Room
@@ -312,7 +314,7 @@ func StartExamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if room.AdminKey != req.AdminKey {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}
@@ -373,16 +375,23 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newRoom := &Room{
-		ID:           roomID,
-		SessionName:  req.SessionName,
-		HostID:       req.HostID,
-		AdminKey:     req.AdminKey,
-		ActiveStatus: Waiting, // Default status
-		Students:     []UserSession{},
-		Sets:         make(map[string]string),
+		ID:            roomID,
+		SessionName:   req.SessionName,
+		HostID:        req.HostID,
+		ActiveStatus:  Waiting,
+		Students:      []UserSession{},
+		Sets:          make(map[string]string),
 		ForbiddenApps: []string{},
 		InviteList:    []string{},
 	}
+
+	// Hash the Admin Key
+	hashedKey, err := bcrypt.GenerateFromPassword([]byte(req.AdminKey), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Internal Server Error during security setup", http.StatusInternalServerError)
+		return
+	}
+	newRoom.AdminKey = string(hashedKey)
 
 	mu.Lock()
 	rooms[roomID] = newRoom
@@ -523,7 +532,7 @@ func AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if room.AdminKey != req.AdminKey {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}
@@ -632,7 +641,7 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if room.AdminKey != req.AdminKey {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}

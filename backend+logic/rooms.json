@@ -41,6 +41,20 @@
     "invite_list": [],
     "students": []
   },
+  "8B7098": {
+    "id": "8B7098",
+    "host_id": "1234",
+    "session_name": "NewRoom",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "1915",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "forbidden_apps": [],
+    "invite_list": [],
+    "students": []
+  },
   "A16IEW": {
     "id": "A16IEW",
     "host_id": "haosd",
@@ -143,6 +157,20 @@
     "invite_list": null,
     "students": []
   },
+  "P5L4R7": {
+    "id": "P5L4R7",
+    "host_id": "host1",
+    "session_name": "Test Session",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "$2a$10$zmx2AT6/MbzbZziVewcVR.NPtwTQhcuUojKqjRROkVc3dv.YHJB.K",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "forbidden_apps": [],
+    "invite_list": [],
+    "students": []
+  },
   "R58QR8": {
     "id": "R58QR8",
     "host_id": "Binayak123",
@@ -155,6 +183,20 @@
     "end_time": "0001-01-01T00:00:00Z",
     "forbidden_apps": null,
     "invite_list": null,
+    "students": []
+  },
+  "SSUU3J": {
+    "id": "SSUU3J",
+    "host_id": "host1",
+    "session_name": "Test Session",
+    "sets": {},
+    "active_status": 0,
+    "admin_key": "$2a$10$S.AojIOYp4UzTAbzw/Vvy.AHr/acLj2JyUVEpUdc6/ztz0VddPVpW",
+    "time_allocated": 0,
+    "start_time": "0001-01-01T00:00:00Z",
+    "end_time": "0001-01-01T00:00:00Z",
+    "forbidden_apps": [],
+    "invite_list": [],
     "students": []
   },
   "T8FQUR": {

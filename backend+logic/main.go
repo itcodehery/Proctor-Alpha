@@ -14,7 +14,7 @@ type ScanResult struct {
 	Processes      []string `json:"processes"`
 }
 
-var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "spotify", "zen"}
+var forbiddenApps = []string{"firefox", "hotspotshield", "discord", "slack", "zen"}
 var wsHub *Hub
 
 func serveWsHandler(w http.ResponseWriter, r *http.Request) {
