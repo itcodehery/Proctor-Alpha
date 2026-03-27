@@ -96,6 +96,36 @@ async fn discover_proctor_rooms() -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+async fn scan_local_processes() -> Result<Vec<String>, String> {
+    let mut processes = Vec::new();
+    
+    // Windows fallback if needed, but project says mac. For mac/linux we use ps -e
+    #[cfg(not(target_os = "windows"))]
+    if let Ok(output) = std::process::Command::new("ps").arg("-e").output() {
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines().skip(1) { // Skip header
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                processes.push(parts[3..].join(" "));
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    if let Ok(output) = std::process::Command::new("tasklist").output() {
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines().skip(3) { // Skip headers
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if !parts.is_empty() {
+                processes.push(parts[0].to_string());
+            }
+        }
+    }
+    
+    Ok(processes)
+}
+
+#[tauri::command]
 fn save_log(log_content: String) -> Result<(), String> {
     let home_dir = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
     let workspace_path = PathBuf::from(home_dir).join(".proctor_workspace");
@@ -337,7 +367,7 @@ pub fn run() {
                 let _ = window.emit("attempted-close", ());
             }
         })
-        .invoke_handler(tauri::generate_handler![write_to_pty, verify_admin_key, exit_app, save_log, list_files, read_file, write_file, create_file, set_kiosk_mode, capture_screenshot, discover_proctor_rooms])
+        .invoke_handler(tauri::generate_handler![write_to_pty, verify_admin_key, exit_app, save_log, list_files, read_file, write_file, create_file, set_kiosk_mode, capture_screenshot, discover_proctor_rooms, scan_local_processes])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -527,16 +527,21 @@ async function pollProcessShield() {
   if (!isStudentSessionActive) return; // Only scan during student exam session
 
   try {
-    const response = await fetch(`${getStudentApiBase()}/scan?room_id=${currentRoomId}`);
-    if (!response.ok) return;
-    const data = await response.json();
-
-    if (data.forbidden_found) {
-      const apps = data.processes.join(', ');
-      addLogEntry('alert', `Process Shield: Detected ${apps}`);
-    }
+    const processes = await invoke('scan_local_processes');
+    
+    // Send raw processes to backend Telemetry Worker Pool
+    await fetch(`${getStudentApiBase()}/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        room_id: currentRoomId,
+        user_id: joinRegNoInput.value.trim(),
+        event_type: 'process_scan',
+        data: { processes: processes }
+      })
+    });
   } catch (e) {
-    // Backend likely offline
+    console.error("Local process scan failed:", e);
   }
 }
 
@@ -960,6 +965,28 @@ async function handleJoinRoom() {
   joinSubmitBtn.innerText = "Joining...";
   joinSubmitBtn.disabled = true;
   joinError.style.display = 'none';
+
+  // Offline Testing Bypass
+  if (serverIp === "offline" || serverIp === "test") {
+      console.log("[DEBUG] Using offline bypass mode");
+      isStudentSessionActive = true;
+      currentRoomId = roomId;
+
+      // Navigate to IDE
+      joinContainer.classList.add('fade-out');
+
+      // Adjust IDE layout
+      setTimeout(() => {
+        if (shell && shell.fitAddon) shell.fitAddon.fit();
+        if (liveViewEditor) liveViewEditor.layout();
+        joinContainer.style.display = 'none';
+        appContainer.style.display = 'flex';
+      }, 300);
+      
+      joinSubmitBtn.innerText = "Join Exam";
+      joinSubmitBtn.disabled = false;
+      return;
+  }
 
   console.log(`[DEBUG] Attempting to join room: ${roomId} as ${name} (${regNo})`);
   console.log(`[DEBUG] API URL: ${getStudentApiBase()}/join-room`);
@@ -1670,6 +1697,12 @@ function updateLiveViewUI(student) {
     const activeFileEl = document.getElementById('lv-active-file');
     if (activeFileEl) activeFileEl.textContent = activeFile || '-';
 
+    const scoreEl = document.getElementById('lv-suspicion-score');
+    if (scoreEl) {
+        const score = student.total_suspicion_score || 0;
+        scoreEl.textContent = parseFloat(score).toFixed(1);
+    }
+
     // --- Update Activity Log ---
     const logEl = document.getElementById('lv-activity-log');
     if (logEl) {
@@ -1706,35 +1739,54 @@ async function logActivity(message) {
 }
 
 // 1. Tab-Switch & Visibility Tracking
-const handleFlagEvent = async (reason) => {
-    if (!isStudentSessionActive) return;
-    addLogEntry('alert', `⚠️ ${reason} detected! Flagging session.`);
-    logActivity(`⚠️ FLAG: ${reason}`);
-    
+let focusLostTime = null;
+
+async function sendTelemetryEvent(eventType, data) {
+    if (!isStudentSessionActive || !currentRoomId) return;
     try {
-        await fetch(`${getStudentApiBase()}/admin/update-status`, {
+        await fetch(`${getStudentApiBase()}/telemetry`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 room_id: currentRoomId,
                 user_id: joinRegNoInput.value.trim(),
-                status: 3 // Flagged
+                event_type: eventType,
+                data: data
             })
         });
     } catch (e) {
-        console.error("Failed to flag user:", e);
+        console.error("Telemetry failed:", e);
     }
-};
+}
+
+function handleFocusLost() {
+    if (!isStudentSessionActive) return;
+    if (!focusLostTime) focusLostTime = Date.now();
+    addLogEntry('alert', `⚠️ Tab switched or focus lost! Session flagged.`);
+    
+    // Fallback log activity, the worker actually tracks duration when focus is regained
+    logActivity(`⚠️ Focus Lost`); 
+}
+
+function handleFocusGained() {
+    if (!isStudentSessionActive) return;
+    if (focusLostTime) {
+        const durationLogs = (Date.now() - focusLostTime) / 1000;
+        sendTelemetryEvent("focus_lost", { duration_seconds: durationLogs });
+        focusLostTime = null;
+    }
+}
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && isStudentSessionActive) {
-    handleFlagEvent("Tab switch");
-  }
+    if (document.hidden) {
+        handleFocusLost();
+    } else {
+        handleFocusGained();
+    }
 });
 
-window.addEventListener('blur', () => {
-    if (isStudentSessionActive) handleFlagEvent("Window focus loss");
-});
+window.addEventListener('blur', handleFocusLost);
+window.addEventListener('focus', handleFocusGained);
 
 // 2. Clipboard Protection
 window.addEventListener('paste', (e) => {

@@ -98,6 +98,9 @@ func main() {
 	wsHub = newHub()
 	go wsHub.run()
 
+	// Start Background Process Engines
+	StartTelemetryWorkers(5)
+
 	http.HandleFunc("/ws", serveWsHandler)
 	http.HandleFunc("/scan", checkProcessesHandler)
 	http.HandleFunc("/create-room", CreateRoomHandler)
@@ -112,6 +115,7 @@ func main() {
 	http.HandleFunc("/submit", SubmitHandler)
 	http.HandleFunc("/timer-info", TimerInfoHandler)
 	http.HandleFunc("/log-activity", LogActivityHandler)
+	http.HandleFunc("/telemetry", TelemetryEndpointHandler)
 	http.HandleFunc("/admin/verify-key", VerifyAdminKeyHandler)
 
 	// Discovery endpoint - students can ping this to verify a proctor is running

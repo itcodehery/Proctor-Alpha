@@ -71,9 +71,10 @@ type UserSession struct {
 	LastPing       time.Time         `json:"last_ping"`
 	Score          float64           `json:"score"`
 	Workspace      map[string]string `json:"workspace"`
-	ActiveFile     string            `json:"active_file"`
-	LatestSnapshot string            `json:"latest_snapshot"`
-	ActivityLog    []string          `json:"activity_log"`
+	ActiveFile          string            `json:"active_file"`
+	LatestSnapshot      string            `json:"latest_snapshot"`
+	TotalSuspicionScore float64           `json:"total_suspicion_score"`
+	ActivityLog         []string          `json:"activity_log"`
 }
 
 var (

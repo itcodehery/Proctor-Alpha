@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Proctor-Alpha — Test Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #ffffff;
+    --bg-card: #fafafa;
+    --bg-log: #f5f5f5;
+    --border: #e0e0e0;
+    --text: #1a1a1a;
+    --text-secondary: #666666;
+    --text-muted: #999999;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --mono: 'IBM Plex Mono', 'Menlo', monospace;
+    --sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 32px;
+    line-height: 1.6;
+  }
+
+   
+  .header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .header .meta {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+   
+  .stats {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+  .stat {
+    flex: 1;
+    background: var(--bg);
+    padding: 20px;
+    text-align: center;
+  }
+  .stat .number {
+    font-size: 32px;
+    font-weight: 700;
+    font-family: var(--mono);
+    line-height: 1.1;
+  }
+  .stat .label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .stat.pass .number { color: var(--green); }
+  .stat.fail .number { color: var(--red); }
+
+   
+  .section {
+    margin-bottom: 36px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+   
+  .test {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .test-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+  }
+  .test-name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .test-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .test-dur {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .badge.pass {
+    background: var(--green-bg);
+    color: var(--green);
+    border: 1px solid var(--green-border);
+  }
+  .badge.fail {
+    background: var(--red-bg);
+    color: var(--red);
+    border: 1px solid var(--red-border);
+  }
+
+   
+  .test-logs {
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    background: var(--bg-log);
+  }
+  .log-line {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 2px 0;
+    line-height: 1.5;
+  }
+  .log-line.worker {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+   
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>Proctor-Alpha Test Report</h1>
+    <div class="meta">27 Mar 2026, 10:55 AM &middot; Runtime: 5.145s</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="number">25</div>
+      <div class="label">Total</div>
+    </div>
+    <div class="stat pass">
+      <div class="number">25</div>
+      <div class="label">Passed</div>
+    </div>
+    <div class="stat fail">
+      <div class="number">0</div>
+      <div class="label">Failed</div>
+    </div>
+  </div>
+
+  
+  <div class="section">
+    <div class="section-title">Levenshtein Distance — Mathematical Computation</div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestLevenshteinDistance_IdenticalStrings</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">levenshtein(&#34;discord&#34;, &#34;discord&#34;) = 0 [identical strings]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestLevenshteinDistance_SingleCharDifference</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">levenshtein(&#34;discord&#34;, &#34;discors&#34;) = 1 [one substitution]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestLevenshteinDistance_SpoofedName</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">levenshtein(&#34;d1sc0rd&#34;, &#34;discord&#34;) = 2 [spoofed app name]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestLevenshteinDistance_CompletelyDifferent</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">levenshtein(&#34;abc&#34;, &#34;xyz&#34;) = 3 [completely different]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestLevenshteinDistance_EmptyStrings</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Edge cases: (&#34;&#34;,&#34;hello&#34;)=5, (&#34;hello&#34;,&#34;&#34;)=5, (&#34;&#34;,&#34;&#34;)=0</div>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  <div class="section">
+    <div class="section-title">Process Evaluation — Advanced String Manipulation</div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_ExactMatch</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Exact match: running=[chrome discord code], forbidden=[discord] -&gt; found=[discord]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_PathStripping</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Path stripping: &#34;C:\Program Files\Discord\discord.exe&#34; -&gt; detected: [discord]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_FuzzyMatch</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Fuzzy match (Levenshtein): &#34;d1scord&#34; ~ &#34;discord&#34; -&gt; detected: [discord (fuzzy match: d1scord)]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_NoFalsePositives</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">No false positives: safe processes [chrome vscode terminal finder] passed cleanly</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_EmptyForbiddenList</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Empty forbidden list returns nil correctly</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestEvaluateProcesses_SubstringMatch</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Substring match: &#34;discord-ptb&#34; contains &#34;discord&#34; -&gt; detected: [discord]</div>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+  <div class="section">
+    <div class="section-title">Full Exam Lifecycle — Integration Test</div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step01_CreateRoom</span>
+        <div class="test-right">
+          <span class="test-dur">0.07s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Room created. ID: JWQZUS</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step02_ConfigureRoom</span>
+        <div class="test-right">
+          <span class="test-dur">0.05s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Room configured with forbidden apps: [discord, slack, firefox]</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step03_StudentJoins</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Student joined. Session ID: dd2f96c7fe2d3bd0</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step04_VerifyAdminKey</span>
+        <div class="test-right">
+          <span class="test-dur">0.09s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Valid admin key accepted</div><div class="log-line">Invalid admin key correctly rejected (401)</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step05_StartExam</span>
+        <div class="test-right">
+          <span class="test-dur">0.05s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Exam started successfully</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step06_SyncCode</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Code synced: main.go, utils.go (active: main.go)</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step07_VerifyRoomState</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Room state verified: Status=Active, Students=1, Files=2, ActiveFile=main.go</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step08_TelemetryFocusLoss</span>
+        <div class="test-right">
+          <span class="test-dur">0.50s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">[Telemetry Worker] User Praneeth M gained 6.2 suspicion points for Focus lost for 5.0s. Total: 6.2</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 6.8 suspicion points for Focus lost for 15.0s. Total: 13.1</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 8.4 suspicion points for Focus lost for 30.0s. Total: 21.4</div><div class="log-line">Suspicion score after 3 focus-loss events (5s, 15s, 30s): 21.4</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step09_TelemetryProcessScan</span>
+        <div class="test-right">
+          <span class="test-dur">0.50s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">[Telemetry Worker] User Praneeth M gained 20.0 suspicion points for Forbidden processes detected: discord. Total: 41.4</div><div class="log-line">After process scan [chrome vscode Discord.app terminal]: score=41.4</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step10_TelemetrySpoofedProcess</span>
+        <div class="test-right">
+          <span class="test-dur">0.50s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">[Telemetry Worker] User Praneeth M gained 20.0 suspicion points for Forbidden processes detected: discord (fuzzy match: d1scord). Total: 61.4</div><div class="log-line">Spoofed process &#34;d1scord&#34; fuzzy-matched to &#34;discord&#34;: score=61.4</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step11_VerifyAutoFlag</span>
+        <div class="test-right">
+          <span class="test-dur">3.01s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Score 61.4 not yet at threshold, sending additional events...</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 16.4 suspicion points for Focus lost for 60.0s. Total: 77.8</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 16.4 suspicion points for Focus lost for 60.0s. Total: 94.2</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 16.4 suspicion points for Focus lost for 60.0s. Total: 110.6</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 16.4 suspicion points for Focus lost for 60.0s. Total: 127.0</div><div class="log-line">[Telemetry Worker] User Praneeth M gained 16.4 suspicion points for Focus lost for 60.0s. Total: 143.4</div><div class="log-line">AUTO-FLAG VERIFIED: score=143.4, status=FLAGGED</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step12_SubmitWork</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">Student work submitted: Submission received successfully</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">Step13_FinalSummary</span>
+        <div class="test-right">
+          <span class="test-dur">0.00s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+      <div class="test-logs">
+        <div class="log-line">========== PROCTOR-ALPHA TEST SUMMARY ==========</div><div class="log-line">  Room ID:           JWQZUS</div><div class="log-line">  Session:           Go Programming Mid-Term</div><div class="log-line">  Room Status:       1 (1=Active)</div><div class="log-line">  Forbidden Apps:    [discord slack firefox]</div><div class="log-line">  Student:           Praneeth M (REG2024001)</div><div class="log-line">  Student Status:    2 (2=Submitted, 3=Flagged)</div><div class="log-line">  Suspicion Score:   143.4</div><div class="log-line">  Workspace Files:   2</div><div class="log-line">  Activity Logs:     11 entries</div><div class="log-line">================================================</div>
+      </div>
+      
+    </div>
+    
+    <div class="test">
+      <div class="test-row">
+        <span class="test-name">TestRoomFlow</span>
+        <div class="test-right">
+          <span class="test-dur">0.16s</span>
+          <span class="badge pass">PASS</span>
+        </div>
+      </div>
+      
+    </div>
+    
+  </div>
+  
+
+  <div class="footer">Generated by Proctor-Alpha test runner &middot; Go testing framework</div>
+</body>
+</html>
