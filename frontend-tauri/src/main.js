@@ -642,48 +642,42 @@ adminInput.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     const key = adminInput.value;
     
-    // Fallback: If no room joined yet (e.g. testing), just use the old method.
+    // If no room joined yet, just allow exit (for testing scenarios)
     if (!currentRoomId) {
-       const isValid = await invoke('verify_admin_key', { adminKey: key });
-       if (isValid) {
-         await exportLog();
-         await invoke('exit_app');
-       } else {
-         adminInput.classList.add('error');
-         setTimeout(() => adminInput.classList.remove('error'), 500);
-       }
-       return;
+      await exportLog();
+      await invoke('exit_app');
+      return;
     }
 
-    // Verify against the backend for the current room
+    // Verify against the backend using student exit key
     try {
-      const res = await fetch(`${getAdminApiBase()}/admin/verify-key`, {
+      const res = await fetch(`${getAdminApiBase()}/validate-student-exit-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           room_id: currentRoomId,
-          admin_key: key
+          key: key
         })
       });
 
       if (res.ok) {
-        await exportLog();
-        await invoke('exit_app');
+        const data = await res.json();
+        if (data.valid) {
+          await exportLog();
+          await invoke('exit_app');
+        } else {
+          adminInput.classList.add('error');
+          setTimeout(() => adminInput.classList.remove('error'), 500);
+        }
       } else {
         adminInput.classList.add('error');
         setTimeout(() => adminInput.classList.remove('error'), 500);
       }
     } catch (e) {
       console.error("Backend offline or verify failed:", e);
-      // Fallback to tauri offline check if backend is unreachable 
-      const isValid = await invoke('verify_admin_key', { adminKey: key });
-      if (isValid) {
-         await exportLog();
-         await invoke('exit_app');
-      } else {
-         adminInput.classList.add('error');
-         setTimeout(() => adminInput.classList.remove('error'), 500);
-      }
+      // If backend is unreachable, deny exit for security
+      adminInput.classList.add('error');
+      setTimeout(() => adminInput.classList.remove('error'), 500);
     }
   }
 });

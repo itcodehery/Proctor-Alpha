@@ -36,37 +36,38 @@ const (
 
 // Room represents the exam session managed by an examiner
 type Room struct {
-	ID            string            `json:"id"`
-	HostID        string            `json:"host_id"`
-	SessionName   string            `json:"session_name"`
-	Sets          map[string]string `json:"sets"` // e.g., {"SetA": "Questions_URL_1"}
-	ActiveStatus  StatusEnum        `json:"active_status"`
-	AdminKey      string            `json:"admin_key"` // Changed to string for better security
-	TimeAllocated time.Duration     `json:"time_allocated"`
-	StartTime     time.Time         `json:"start_time"`
-	EndTime       time.Time         `json:"end_time"`
-	ForbiddenApps []string          `json:"forbidden_apps"`
-	InviteList    []string          `json:"invite_list"`
-	Students      []UserSession     `json:"students"`
-	Analytics     *RoomAnalytics    `json:"analytics,omitempty"`
+	ID             string            `json:"id"`
+	HostID         string            `json:"host_id"`
+	SessionName    string            `json:"session_name"`
+	Sets           map[string]string `json:"sets"` // e.g., {"SetA": "Questions_URL_1"}
+	ActiveStatus   StatusEnum        `json:"active_status"`
+	RoomAdminKey   string            `json:"room_admin_key"`   // Hashed key for admin authentication
+	StudentExitKey string            `json:"student_exit_key"` // Plain text key for students to exit session
+	TimeAllocated  time.Duration     `json:"time_allocated"`
+	StartTime      time.Time         `json:"start_time"`
+	EndTime        time.Time         `json:"end_time"`
+	ForbiddenApps  []string          `json:"forbidden_apps"`
+	InviteList     []string          `json:"invite_list"`
+	Students       []UserSession     `json:"students"`
+	Analytics      *RoomAnalytics    `json:"analytics,omitempty"`
 }
 
 type RoomAnalytics struct {
-	TotalStudents int            `json:"total_students"`
-	TotalFlags    int            `json:"total_flags"`
-	AvgDuration   float64        `json:"avg_duration_mins"`
-	Submissions   int            `json:"submissions"`
-	FlaggedLogs   []string       `json:"flagged_logs"`
+	TotalStudents int      `json:"total_students"`
+	TotalFlags    int      `json:"total_flags"`
+	AvgDuration   float64  `json:"avg_duration_mins"`
+	Submissions   int      `json:"submissions"`
+	FlaggedLogs   []string `json:"flagged_logs"`
 }
 
 // UserSession represents the student's state within a specific room
 type UserSession struct {
-	ID           string      `json:"id"`
-	UserID       string      `json:"user_id"`
-	Username     string      `json:"username"`
-	RegNo        string      `json:"regno"`
-	ActiveStatus UStatusEnum `json:"active_status"`
-	SelectedSet  string      `json:"selected_set"`
+	ID             string            `json:"id"`
+	UserID         string            `json:"user_id"`
+	Username       string            `json:"username"`
+	RegNo          string            `json:"regno"`
+	ActiveStatus   UStatusEnum       `json:"active_status"`
+	SelectedSet    string            `json:"selected_set"`
 	IpAddress      string            `json:"ip_address"`
 	LastPing       time.Time         `json:"last_ping"`
 	Score          float64           `json:"score"`
@@ -314,7 +315,7 @@ func StartExamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.RoomAdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}
@@ -391,14 +392,15 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error during security setup", http.StatusInternalServerError)
 		return
 	}
-	newRoom.AdminKey = string(hashedKey)
+	newRoom.RoomAdminKey = string(hashedKey)
+	newRoom.StudentExitKey = req.AdminKey // Store plain text key for student exit
 
 	mu.Lock()
 	rooms[roomID] = newRoom
 	mu.Unlock()
 
 	saveRooms() // Persist the new room
-	
+
 	// Broadcast List Update
 	broadcastUpdate("all", "ROOM_LIST_UPDATE", nil)
 
@@ -532,7 +534,7 @@ func AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.RoomAdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}
@@ -542,9 +544,9 @@ func AdminUpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		if s.UserID == req.UserID {
 			room.Students[i].ActiveStatus = req.Status
 			found = true
-			
+
 			// Broadcast Update
-			broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)			
+			broadcastUpdate(req.RoomID, "ROOM_UPDATE", room)
 			break
 		}
 	}
@@ -635,7 +637,7 @@ func VerifyAdminKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.RoomAdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}
@@ -643,6 +645,81 @@ func VerifyAdminKeyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{
 		"valid": true,
+	})
+}
+
+// GetStudentExitKeyHandler returns the plain text key for students to exit the session
+func GetStudentExitKeyHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	roomID := r.URL.Query().Get("room_id")
+	if roomID == "" {
+		http.Error(w, "room_id is required", http.StatusBadRequest)
+		return
+	}
+
+	mu.RLock()
+	room, exists := rooms[roomID]
+	mu.RUnlock()
+
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"student_exit_key": room.StudentExitKey,
+	})
+}
+
+// ValidateStudentExitKeyHandler validates the key for students to exit the session
+func ValidateStudentExitKeyHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == "OPTIONS" {
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		RoomID string `json:"room_id"`
+		Key    string `json:"key"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.RoomID == "" || req.Key == "" {
+		http.Error(w, "room_id and key are required", http.StatusBadRequest)
+		return
+	}
+
+	mu.RLock()
+	room, exists := rooms[req.RoomID]
+	mu.RUnlock()
+
+	if !exists {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	isValid := room.StudentExitKey == req.Key
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{
+		"valid": isValid,
 	})
 }
 
@@ -682,7 +759,7 @@ func UpdateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(room.AdminKey), []byte(req.AdminKey)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(room.RoomAdminKey), []byte(req.AdminKey)); err != nil {
 		http.Error(w, "Unauthorized: Invalid Admin Key", http.StatusUnauthorized)
 		return
 	}

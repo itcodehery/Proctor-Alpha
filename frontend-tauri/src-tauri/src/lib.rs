@@ -28,12 +28,12 @@ fn write_to_pty(state: State<'_, Mutex<AppState>>, pty_id: String, data: Vec<u8>
 
 #[tauri::command]
 fn verify_admin_key(state: State<'_, Mutex<AppState>>, admin_key: String) -> bool {
-    if admin_key == "1915" {
-        let mut state = state.lock().unwrap();
-        state.is_session_active = false;
-        return true;
-    }
-    false
+    // Student exit key validation is now handled via backend API
+    // This function is kept for backward compatibility but always returns false
+    // The frontend should use /validate-student-exit-key endpoint instead
+    let mut state = state.lock().unwrap();
+    state.is_session_active = false;
+    return false;
 }
 
 #[tauri::command]
